@@ -69,6 +69,5 @@ module.exports = {
     ACCOUNT_ID:envVars.ACCOUNT_ID,
     ACCESS_KEY_ID:envVars.ACCESS_KEY_ID,
     SECRET_KEY_ACCESS:envVars.SECRET_KEY_ACCESS
-
   }
 };

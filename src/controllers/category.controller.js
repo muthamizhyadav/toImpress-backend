@@ -13,7 +13,19 @@ const fetchAllCategory = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(category);
 });
 
+const deleteCategory = catchAsync(async (req, res) => {
+  const category = await categoryService.deleteCategory(req);
+  res.status(httpStatus.OK).send(category);
+});
+
+const updateCategory = catchAsync(async (req, res) => {
+  const category = await categoryService.updateCategory(req);
+  res.status(httpStatus.OK).send(category);
+});
+
 module.exports = {
   createCategory,
   fetchAllCategory,
+  deleteCategory,
+  updateCategory,
 };
