@@ -18,7 +18,63 @@ const createProduct = async (req) => {
   return creation;
 };
 
+const getProducts = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const filter = {};
+  const sort = { createdAt: -1 };
+  if (req.query.category) {
+    filter.category = req.query.category;
+  }
+  if (req.query.sortBy) {
+    const sortFields = req.query.sortBy.split(':');
+    sort[sortFields[0]] = sortFields[1] === 'desc' ? -1 : 1;
+  }
+  const products = await Product.find(filter).sort(sort).skip(skip).limit(limit);
+  const total = await Product.countDocuments(filter);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    success: true,
+    data: products,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
+};
+
+const getProductById = async (req) => {
+  const id = req.params.id;
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+  return product;
+};
+
+const updateProductById = async (req) => {
+  const id = req.params.id;
+  const updateData = req.body;
+
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+  Object.assign(product, updateData);
+  await product.save();
+  return product;
+};
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
+  getProducts,
+  getProductById,
+  updateProductById,
 };

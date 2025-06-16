@@ -13,7 +13,25 @@ const createProduct = catchAsync(async (req, res) => {
   res.status(httpStatus.CREATED).send(data);
 });
 
+const getProducts = catchAsync(async (req, res) => {
+  const data = await ProductService.getProducts(req);
+  res.status(httpStatus.OK).send(data);
+});
+
+const getProductById = catchAsync(async (req, res) => {
+  const data = await ProductService.getProductById(req);
+  res.status(httpStatus.OK).send(data);
+});
+
+const updateProductById = catchAsync(async (req, res) => {
+  const data = await ProductService.updateProductById(req);
+  res.status(httpStatus.OK).send(data);
+});
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
+  getProducts,
+  getProductById,
+  updateProductById,
 };
