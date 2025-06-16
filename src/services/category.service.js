@@ -41,8 +41,8 @@ const updateCategory = async (req) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
   }
   let updatedData = { ...body };
-  console.log(updatedData,"updatedData");
-  
+  console.log(updatedData, 'updatedData');
+
   if (file) {
     const url = await uploadToR2(file.buffer, file.originalname, file.mimetype, 'category');
     updatedData.imageUrl = url;
