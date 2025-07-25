@@ -28,10 +28,22 @@ const updateProductById = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(data);
 });
 
+const productsByCategories = catchAsync(async (req, res) => {
+  const data = await ProductService.productsByCategories(req);
+  res.status(httpStatus.OK).send(data);
+});
+
+const getProductByIdAndSimilerProducts = catchAsync(async (req, res) => {
+  const data = await ProductService.getProductByIdAndSimilerProducts(req);
+  res.status(httpStatus.OK).send(data);
+});
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
   getProducts,
   getProductById,
   updateProductById,
+  productsByCategories,
+  getProductByIdAndSimilerProducts,
 };

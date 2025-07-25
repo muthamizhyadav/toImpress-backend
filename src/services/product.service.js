@@ -71,10 +71,69 @@ const updateProductById = async (req) => {
   return product;
 };
 
+const productsByCategories = async (req) => {
+  const id = parseInt(req.params.id);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  let name;
+  switch (id) {
+    case 1:
+      name = 'Brassiere';
+      break;
+    case 2:
+      name = 'Panties';
+      break;
+    case 3:
+      name = 'Shimmer Leggings';
+      break;
+    case 4:
+      name = 'New Arrivals';
+      break;
+    case 5:
+      name = 'Offers Zone';
+      break;
+    case 6:
+      name = 'Combo';
+      break;
+    default:
+      name = null;
+  }
+
+  if (!name) return [];
+
+  const findProductsByCategory = await Product.find({ category: name }).skip(skip).limit(limit);
+
+  const totalCount = await Product.countDocuments({ category: name });
+
+  return {
+    data: findProductsByCategory,
+    currentPage: page,
+    totalPages: Math.ceil(totalCount / limit),
+    totalItems: totalCount,
+  };
+};
+
+const getProductByIdAndSimilerProducts = async (req) => {
+  const id = req.params.id;
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+  const getSimilerProduct = await Product.find({ category: product.category }).limit(10);
+  return {
+    detail: product,
+    similerProducts: getSimilerProduct,
+  };
+};
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
   getProducts,
   getProductById,
   updateProductById,
+  productsByCategories,
+  getProductByIdAndSimilerProducts
 };
