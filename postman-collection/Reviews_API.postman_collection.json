@@ -1,0 +1,470 @@
+{
+  "info": {
+    "name": "Reviews API - toImpress",
+    "description": "Complete Reviews API endpoints for toImpress backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/v1"
+    },
+    {
+      "key": "userToken",
+      "value": "USER_ACCESS_TOKEN"
+    },
+    {
+      "key": "adminToken",
+      "value": "ADMIN_ACCESS_TOKEN"
+    },
+    {
+      "key": "reviewId",
+      "value": "REVIEW_ID_HERE"
+    },
+    {
+      "key": "productId",
+      "value": "PRODUCT_ID_HERE"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create Review for Product",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"rating\": 5,\n  \"title\": \"Excellent product!\",\n  \"comment\": \"I love this product. Great quality and fast shipping. Highly recommend to everyone!\",\n  \"images\": [\n    \"https://example.com/review-image1.jpg\",\n    \"https://example.com/review-image2.jpg\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/reviews/product/{{productId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "product", "{{productId}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Product Reviews",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/product/{{productId}}?page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "product", "{{productId}}"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Product Reviews with Filters",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/product/{{productId}}?rating=5&verified=true&sortBy=createdAt:desc",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "product", "{{productId}}"],
+          "query": [
+            {
+              "key": "rating",
+              "value": "5"
+            },
+            {
+              "key": "verified",
+              "value": "true"
+            },
+            {
+              "key": "sortBy",
+              "value": "createdAt:desc"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get My Reviews",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/my-reviews?page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "my-reviews"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get My Reviews with Status Filter",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/my-reviews?status=approved&rating=4",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "my-reviews"],
+          "query": [
+            {
+              "key": "status",
+              "value": "approved"
+            },
+            {
+              "key": "rating",
+              "value": "4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get All Reviews (Admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews?page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get All Reviews with Filters (Admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews?status=pending&rating=1&sortBy=createdAt:desc",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews"],
+          "query": [
+            {
+              "key": "status",
+              "value": "pending"
+            },
+            {
+              "key": "rating",
+              "value": "1"
+            },
+            {
+              "key": "sortBy",
+              "value": "createdAt:desc"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Review by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update Own Review",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"rating\": 4,\n  \"title\": \"Updated: Good product\",\n  \"comment\": \"Updated my review after using it for a month. Still good but found some minor issues.\",\n  \"images\": [\"https://example.com/updated-image.jpg\"]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}"]
+        }
+      }
+    },
+    {
+      "name": "Approve Review (Admin)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"approved\",\n  \"adminNotes\": \"Review approved after verification\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}"]
+        }
+      }
+    },
+    {
+      "name": "Reject Review (Admin)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"rejected\",\n  \"adminNotes\": \"Review rejected due to inappropriate content\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}"]
+        }
+      }
+    },
+    {
+      "name": "Delete Review",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}"]
+        }
+      }
+    },
+    {
+      "name": "Mark Review as Helpful",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}/helpful",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}", "helpful"]
+        }
+      }
+    },
+    {
+      "name": "Remove Helpful Vote",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}/helpful",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}", "helpful"]
+        }
+      }
+    },
+    {
+      "name": "Report Review - Spam",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"spam\",\n  \"description\": \"This review appears to be spam with fake information\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}/report",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}", "report"]
+        }
+      }
+    },
+    {
+      "name": "Report Review - Inappropriate",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"inappropriate\",\n  \"description\": \"Contains inappropriate language\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/reviews/{{reviewId}}/report",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "{{reviewId}}", "report"]
+        }
+      }
+    },
+    {
+      "name": "Upload Review Images",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "images",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/reviews/upload/images",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "upload", "images"]
+        }
+      }
+    },
+    {
+      "name": "Get Review Statistics (Admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/stats",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "stats"]
+        }
+      }
+    },
+    {
+      "name": "Test Unauthorized Access",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/reviews/stats",
+          "host": ["{{baseUrl}}"],
+          "path": ["reviews", "stats"]
+        }
+      }
+    }
+  ]
+}

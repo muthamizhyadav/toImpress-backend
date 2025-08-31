@@ -1,0 +1,327 @@
+{
+  "info": {
+    "name": "Orders API - toImpress",
+    "description": "Complete Orders API endpoints for toImpress backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/v1"
+    },
+    {
+      "key": "userToken",
+      "value": "YOUR_USER_ACCESS_TOKEN"
+    },
+    {
+      "key": "adminToken",
+      "value": "YOUR_ADMIN_ACCESS_TOKEN"
+    },
+    {
+      "key": "orderId",
+      "value": "ORDER_ID_HERE"
+    },
+    {
+      "key": "productId",
+      "value": "PRODUCT_ID_HERE"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    {\n      \"product\": \"{{productId}}\",\n      \"quantity\": 2,\n      \"selectedColor\": \"red\",\n      \"selectedSize\": \"M\"\n    }\n  ],\n  \"shippingAddress\": {\n    \"street\": \"123 Main Street\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"billingAddress\": {\n    \"street\": \"123 Main Street\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"paymentMethod\": \"credit_card\",\n  \"notes\": \"Please deliver to front door\",\n  \"shippingCost\": 10,\n  \"tax\": 8.5,\n  \"discount\": 5\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orders",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders"]
+        }
+      }
+    },
+    {
+      "name": "Get All Orders (Admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/orders?page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Orders with Filters (Admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/orders?status=pending&paymentStatus=pending&sortBy=createdAt:desc",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders"],
+          "query": [
+            {
+              "key": "status",
+              "value": "pending"
+            },
+            {
+              "key": "paymentStatus",
+              "value": "pending"
+            },
+            {
+              "key": "sortBy",
+              "value": "createdAt:desc"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get My Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/orders/my-orders?page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "my-orders"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get My Orders with Status Filter",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/orders/my-orders?status=pending",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "my-orders"],
+          "query": [
+            {
+              "key": "status",
+              "value": "pending"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Order by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update Order - Confirm (Admin)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"confirmed\",\n  \"notes\": \"Order confirmed and processing will begin soon\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update Order - Ship (Admin)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"shipped\",\n  \"trackingNumber\": \"1234567890\",\n  \"estimatedDelivery\": \"2025-08-25T10:00:00.000Z\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update Order - Deliver (Admin)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"delivered\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update Order - Cancel (Admin)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"cancelled\",\n  \"notes\": \"Order cancelled as requested by customer\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "Delete Order (Admin)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/orders/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Order Statistics (Admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/orders/stats",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "stats"]
+        }
+      }
+    },
+    {
+      "name": "Test Unauthorized Access",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/orders/stats",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "stats"]
+        }
+      }
+    }
+  ]
+}
