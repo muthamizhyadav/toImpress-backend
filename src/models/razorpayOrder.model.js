@@ -30,6 +30,13 @@ const razorpayOrderSchema = mongoose.Schema(
     status: {
       type: String,
     },
+    items:{
+      type: Array,
+      default: [],
+    },
+    userId:{
+      type: String,
+    },
     createdAt: {
       type: Date,
       default: Date.now,

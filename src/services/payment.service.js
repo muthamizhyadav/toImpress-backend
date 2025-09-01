@@ -9,7 +9,7 @@ const razorpay = new Razorpay({
 
 const { RazorpayOrder } = require('../models');
 
-const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes }) => {
+const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes,items },userId) => {
   const order = await razorpay.orders.create({
     amount,
     currency,
@@ -26,6 +26,8 @@ const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes })
     notes: order.notes,
     status: order.status,
     raw: order,
+    items: items || [],
+    userId: userId || null,
   });
 
   return order;

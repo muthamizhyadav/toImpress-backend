@@ -1,3 +1,4 @@
+
 const httpStatus = require('http-status');
 const pick = require('../utils/pick');
 const ApiError = require('../utils/ApiError');
@@ -7,6 +8,16 @@ const { userService } = require('../services');
 const createUser = catchAsync(async (req, res) => {
   const user = await userService.createUser(req.body);
   res.status(httpStatus.CREATED).send(user);
+});
+
+const addUserAddress = catchAsync(async (req, res) => {
+  const userId = req.params.userId;
+  const address = req.body.address;
+  if (!address) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Address is required');
+  }
+  const user = await userService.addUserAddress(userId, address);
+  res.status(httpStatus.OK).send(user);
 });
 
 const getUsers = catchAsync(async (req, res) => {
@@ -40,4 +51,5 @@ module.exports = {
   getUser,
   updateUser,
   deleteUser,
+  addUserAddress,
 };

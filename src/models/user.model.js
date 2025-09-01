@@ -40,6 +40,10 @@ const userSchema = mongoose.Schema(
       },
       private: true, // used by the toJSON plugin
     },
+    address: {
+      type: Array,
+      default: [],
+    },
     role: {
       type: String,
       enum: roles,

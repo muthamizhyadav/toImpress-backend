@@ -5,3 +5,4 @@ module.exports.Product = require('./product.model');
 module.exports.Order = require('./order.model');
 module.exports.Review = require('./review.model');
 module.exports.RazorpayOrder = require('./razorpayOrder.model');
+module.exports.DelhiveryOrder = require('./delhiveryOrder.model');

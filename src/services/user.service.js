@@ -1,3 +1,10 @@
+/**
+ * Add address to user
+ * @param {String} userId
+ * @param {Object} address
+ * @returns {Promise<User>}
+ */
+
 const httpStatus = require('http-status');
 const { User } = require('../models');
 const ApiError = require('../utils/ApiError');
@@ -65,6 +72,25 @@ const updateUserById = async (userId, updateBody) => {
   return user;
 };
 
+const addUserAddress = async (userId, address) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  if (address && typeof address === 'object' && address.index !== undefined) {
+    const idx = address.index;
+    if (user.address[idx]) {
+      user.address[idx] = address.data;
+    } else {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Address index not found');
+    }
+  } else {
+    user.address.push(address);
+  }
+  await user.save();
+  return user;
+};
+
 /**
  * Delete user by id
  * @param {ObjectId} userId
@@ -86,4 +112,5 @@ module.exports = {
   getUserByEmail,
   updateUserById,
   deleteUserById,
+  addUserAddress,
 };
