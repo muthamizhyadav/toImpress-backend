@@ -45,6 +45,10 @@ const defaultRoutes = [
       path: '/payments',
       route: require('./payment.route'),
     },
+      {
+        path: '/delhivery',
+        route: require('./delhivery.route'),
+      },
 ];
 
 const devRoutes = [

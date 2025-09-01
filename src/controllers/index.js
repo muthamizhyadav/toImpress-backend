@@ -6,3 +6,5 @@ module.exports.orderController = require('./order.controller');
 module.exports.reviewController = require('./review.controller');
 
 module.exports.paymentController = require('./payment.controller');
+
+module.exports.delhiveryController = require('./delhivery.controller');

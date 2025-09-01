@@ -4,3 +4,5 @@ module.exports.orderValidation = require('./order.validation');
 module.exports.reviewValidation = require('./review.validation');
 
 module.exports.paymentValidation = require('./payment.validation');
+
+module.exports.delhiveryValidation = require('./delhivery.validation');
