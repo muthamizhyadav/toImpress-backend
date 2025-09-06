@@ -12,6 +12,16 @@ async function sendOtp(mobile, otp) {
   };
   console.log(payload,"PAYLOAD");
   
+  // Skip Fast2SMS for now, just return success with auto-generated OTP
+  console.log(`OTP for ${mobile}: ${otp} (Fast2SMS temporarily disabled)`);
+  return {
+    success: true,
+    message: "OTP sent successfully",
+    otp: otp ,
+    autogent:true
+  };
+  
+  /* Commented out Fast2SMS implementation
   try {
     const response = await axios.post(FAST2SMS_URL, payload, {
       headers: {
@@ -26,6 +36,7 @@ async function sendOtp(mobile, otp) {
     console.error('Fast2SMS Error:', err.response?.data || err.message);
     throw new Error(`Failed to send OTP: ${err.response?.data?.message || err.message}`);
   }
+  */
 }
 
 module.exports = { sendOtp };
