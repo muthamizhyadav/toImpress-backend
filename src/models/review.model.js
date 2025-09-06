@@ -61,7 +61,6 @@ const reviewSchema = mongoose.Schema(
       type: String,
       trim: true,
     },
-    // For tracking who found the review helpful
     helpfulVotes: [{
       user: {
         type: String,

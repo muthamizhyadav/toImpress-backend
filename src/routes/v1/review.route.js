@@ -12,7 +12,7 @@ const upload = multer({ storage });
 // Product-specific review routes
 router
   .route('/product/:productId')
-  .post(auth('createReview'), validate(reviewValidation.createReview), reviewController.createReview)
+  .post(auth(), validate(reviewValidation.createReview), reviewController.createReview)
   .get(validate(reviewValidation.getProductReviews), reviewController.getProductReviews);
 
 // User's own reviews

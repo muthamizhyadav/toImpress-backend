@@ -15,10 +15,15 @@ const ApiError = require('../utils/ApiError');
  * @returns {Promise<User>}
  */
 const createUser = async (userBody) => {
-  if (await User.isEmailTaken(userBody.email)) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
+  // Only mobile required for Flipkart-style OTP login
+  if (!userBody.mobile) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Mobile number required');
   }
-  return User.create(userBody);
+  let user = await User.findOne({ mobile: userBody.mobile });
+  if (!user) {
+    user = await User.create({ mobile: userBody.mobile, name: userBody.name });
+  }
+  return user;
 };
 
 /**
