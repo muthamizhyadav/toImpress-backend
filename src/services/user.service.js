@@ -96,6 +96,25 @@ const addUserAddress = async (userId, address) => {
   return user;
 };
 
+const addOrUpdateUserAddress = async (userId, address) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  // Check if the user already has an address
+  if (user.address && user.address.length > 0) {
+    // Update the first address (or extend logic for multiple addresses)
+    user.address[0] = address;
+  } else {
+    // Add a new address
+    user.address = [address];
+  }
+
+  await user.save();
+  return user;
+};
+
 /**
  * Delete user by id
  * @param {ObjectId} userId
@@ -118,4 +137,5 @@ module.exports = {
   updateUserById,
   deleteUserById,
   addUserAddress,
+  addOrUpdateUserAddress,
 };
