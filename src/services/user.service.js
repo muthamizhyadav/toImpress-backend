@@ -1,3 +1,10 @@
+/**
+ * Add address to user
+ * @param {String} userId
+ * @param {Object} address
+ * @returns {Promise<User>}
+ */
+
 const httpStatus = require('http-status');
 const { User } = require('../models');
 const ApiError = require('../utils/ApiError');
@@ -8,10 +15,15 @@ const ApiError = require('../utils/ApiError');
  * @returns {Promise<User>}
  */
 const createUser = async (userBody) => {
-  if (await User.isEmailTaken(userBody.email)) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
+  // Only mobile required for Flipkart-style OTP login
+  if (!userBody.mobile) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Mobile number required');
   }
-  return User.create(userBody);
+  let user = await User.findOne({ mobile: userBody.mobile });
+  if (!user) {
+    user = await User.create({ mobile: userBody.mobile, name: userBody.name });
+  }
+  return user;
 };
 
 /**
@@ -65,6 +77,44 @@ const updateUserById = async (userId, updateBody) => {
   return user;
 };
 
+const addUserAddress = async (userId, address) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  if (address && typeof address === 'object' && address.index !== undefined) {
+    const idx = address.index;
+    if (user.address[idx]) {
+      user.address[idx] = address.data;
+    } else {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Address index not found');
+    }
+  } else {
+    user.address.push(address);
+  }
+  await user.save();
+  return user;
+};
+
+const addOrUpdateUserAddress = async (userId, address) => {
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  // Check if the user already has an address
+  if (user.address && user.address.length > 0) {
+    // Update the first address (or extend logic for multiple addresses)
+    user.address[0] = address;
+  } else {
+    // Add a new address
+    user.address = [address];
+  }
+
+  await user.save();
+  return user;
+};
+
 /**
  * Delete user by id
  * @param {ObjectId} userId
@@ -86,4 +136,6 @@ module.exports = {
   getUserByEmail,
   updateUserById,
   deleteUserById,
+  addUserAddress,
+  addOrUpdateUserAddress,
 };
