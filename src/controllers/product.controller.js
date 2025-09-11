@@ -3,6 +3,7 @@ const catchAsync = require('../utils/catchAsync');
 const ApiError = require('../utils/ApiError');
 const ProductService = require('../services/product.service');
 
+
 const uploadMultipleFiles = catchAsync(async (req, res) => {
   const data = await ProductService.uploadMultipleFiles(req);
   res.status(httpStatus.CREATED).send(data);
@@ -38,6 +39,11 @@ const getProductByIdAndSimilerProducts = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(data);
 });
 
+const deleteProductById = catchAsync(async (req, res) => {
+  const data = await ProductService.deleteProductById(req.params.id);
+  res.status(httpStatus.OK).send(data);
+});
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
@@ -46,4 +52,5 @@ module.exports = {
   updateProductById,
   productsByCategories,
   getProductByIdAndSimilerProducts,
+  deleteProductById,
 };

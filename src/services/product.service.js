@@ -3,6 +3,7 @@ const { Category, Product } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { uploadMultipleToR2 } = require('../utils/multipleUpload');
 
+
 const uploadMultipleFiles = async (req) => {
   if (req.files) {
     const uploaded = await uploadMultipleToR2(req.files, 'product');
@@ -128,6 +129,15 @@ const getProductByIdAndSimilerProducts = async (req) => {
   };
 };
 
+const deleteProductById = async (id) => {
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
+  }
+  await product.deleteOne();
+  return { success: true, message: 'Product deleted successfully' };
+};
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
@@ -135,5 +145,6 @@ module.exports = {
   getProductById,
   updateProductById,
   productsByCategories,
-  getProductByIdAndSimilerProducts
+  getProductByIdAndSimilerProducts,
+  deleteProductById
 };
