@@ -17,8 +17,17 @@ const fetchAllBanner = async (req) => {
   const getBanners = await Banner.find().sort({ position: -1 });
   return getBanners;
 };
+const deleteBannerById = async (id) => {
+  const banner = await Banner.findById(id);
+  if (!banner) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Banner not found');
+  }
+  await banner.deleteOne();
+  return { success: true, message: 'Banner deleted successfully' };
+};
 
 module.exports = {
   createBanner,
   fetchAllBanner,
+  deleteBannerById,
 };

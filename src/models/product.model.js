@@ -48,6 +48,10 @@ const productSchema = mongoose.Schema(
       type: Array,
       default: [],
     },
+    colorData:{
+      type: Object,
+      default: {},
+    }
   },
   { timestamp: true }
 );

@@ -21,6 +21,9 @@ const bannerSchema = mongoose.Schema(
     url: {
       type: String,
     },
+    bannerType:{
+      type: String,
+    }
   },
   { timestamp: true }
 );

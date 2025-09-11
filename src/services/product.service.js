@@ -32,8 +32,8 @@ const getProducts = async (req, res) => {
     const sortFields = req.query.sortBy.split(':');
     sort[sortFields[0]] = sortFields[1] === 'desc' ? -1 : 1;
   }
-  const products = await Product.find(filter).sort(sort).skip(skip).limit(limit);
-  const total = await Product.countDocuments(filter);
+  const products = await Product.find().sort(sort).skip(skip).limit(limit);
+  const total = await Product.countDocuments();
   const totalPages = Math.ceil(total / limit);
 
   return {

@@ -12,8 +12,13 @@ const getAllBanners = catchAsync(async (req, res) => {
   const data = await userHomeService.fetchAllBanner(req);
   res.send(data);
 });
+const deleteBannerById = catchAsync(async (req, res) => {
+  const data = await userHomeService.deleteBannerById(req.params.id);
+  res.status(httpStatus.OK).send(data);
+});
 
 module.exports = {
   createBanner,
   getAllBanners,
+  deleteBannerById,
 };
