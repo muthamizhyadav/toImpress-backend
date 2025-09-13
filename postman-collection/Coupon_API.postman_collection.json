@@ -1,0 +1,409 @@
+{
+	"info": {
+		"_postman_id": "coupon-api-collection",
+		"name": "Coupon API",
+		"description": "Collection for testing Coupon APIs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Coupon",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"code\": \"SAVE20\",\n  \"discount\": 20,\n  \"type\": \"percentage\",\n  \"couponFor\": \"minPurchase\",\n  \"minPurchaseAmount\": 500,\n  \"isActive\": true,\n  \"maxUsage\": 100\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/v1/coupons",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons"
+					]
+				}
+			}
+		},
+		{
+			"name": "Get All Coupons",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/v1/coupons?page=1&limit=10",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "10"
+						},
+						{
+							"key": "isActive",
+							"value": "true",
+							"disabled": true
+						},
+						{
+							"key": "type",
+							"value": "percentage",
+							"disabled": true
+						},
+						{
+							"key": "couponFor",
+							"value": "minPurchase",
+							"disabled": true
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Get Coupon by ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/v1/coupons/{{coupon_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons",
+						"{{coupon_id}}"
+					]
+				}
+			}
+		},
+		{
+			"name": "Get Coupon by Code",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/v1/coupons/code/SAVE20",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons",
+						"code",
+						"SAVE20"
+					]
+				}
+			}
+		},
+		{
+			"name": "Update Coupon",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"discount\": 25,\n  \"maxUsage\": 150,\n  \"isActive\": true\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/v1/coupons/{{coupon_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons",
+						"{{coupon_id}}"
+					]
+				}
+			}
+		},
+		{
+			"name": "Delete Coupon",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/v1/coupons/{{coupon_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons",
+						"{{coupon_id}}"
+					]
+				}
+			}
+		},
+		{
+			"name": "Validate Coupon",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"code\": \"SAVE20\",\n  \"cartTotal\": 1000,\n  \"productIds\": [\"{{product_id_1}}\", \"{{product_id_2}}\"]\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/v1/coupons/validate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons",
+						"validate"
+					]
+				}
+			}
+		},
+		{
+			"name": "Apply Coupon",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"code\": \"SAVE20\",\n  \"cartTotal\": 1000,\n  \"productIds\": [\"{{product_id_1}}\", \"{{product_id_2}}\"]\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/v1/coupons/apply",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons",
+						"apply"
+					]
+				}
+			}
+		},
+		{
+			"name": "Get Active Coupons for Product",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/v1/coupons/product/{{product_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons",
+						"product",
+						"{{product_id}}"
+					]
+				}
+			}
+		},
+		{
+			"name": "Increment Usage Count",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"code\": \"SAVE20\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/v1/coupons/increment-usage",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons",
+						"increment-usage"
+					]
+				}
+			}
+		},
+		{
+			"name": "Create Product Coupon",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"code\": \"PRODUCT10\",\n  \"discount\": 10,\n  \"type\": \"percentage\",\n  \"couponFor\": \"product\",\n  \"products\": [\"{{product_id_1}}\", \"{{product_id_2}}\"],\n  \"isActive\": true,\n  \"maxUsage\": 50\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/v1/coupons",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons"
+					]
+				}
+			}
+		},
+		{
+			"name": "Create Fixed Discount Coupon",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"code\": \"FLAT100\",\n  \"discount\": 100,\n  \"type\": \"fixed\",\n  \"couponFor\": \"minPurchase\",\n  \"minPurchaseAmount\": 1000,\n  \"isActive\": true,\n  \"maxUsage\": null\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/v1/coupons",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"v1",
+						"coupons"
+					]
+				}
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "coupon_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "product_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "product_id_1",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "product_id_2",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
