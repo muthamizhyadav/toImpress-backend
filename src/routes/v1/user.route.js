@@ -7,8 +7,8 @@ const userController = require('../../controllers/user.controller');
 
 const router = express.Router();
 
-router.post('/login/request-otp', userController.requestOtp);
-router.post('/login/verify-otp', userController.verifyOtp);
+router.post('/login/request-otp', validate(userValidation.requestOtp), userController.requestOtp);
+router.post('/login/verify-otp', validate(userValidation.verifyOtp), userController.verifyOtp);
 
 router
   .route('/')

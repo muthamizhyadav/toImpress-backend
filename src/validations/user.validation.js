@@ -47,10 +47,25 @@ const deleteUser = {
   }),
 };
 
+const requestOtp = {
+  body: Joi.object().keys({
+    mobile: Joi.string().required().pattern(/^[6-9]\d{9}$/).message('Mobile number must be a valid 10-digit Indian mobile number'),
+  }),
+};
+
+const verifyOtp = {
+  body: Joi.object().keys({
+    mobile: Joi.string().required().pattern(/^[6-9]\d{9}$/).message('Mobile number must be a valid 10-digit Indian mobile number'),
+    otp: Joi.string().required().length(6).pattern(/^\d+$/).message('OTP must be a 6-digit number'),
+  }),
+};
+
 module.exports = {
   createUser,
   getUsers,
   getUser,
   updateUser,
   deleteUser,
+  requestOtp,
+  verifyOtp,
 };

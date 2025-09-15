@@ -26,6 +26,9 @@ const envVarsSchema = Joi.object()
     ACCOUNT_ID:Joi.string().description('the from field in the emails sent by the app'),
     ACCESS_KEY_ID:Joi.string().description('the from field in the emails sent by the app'),
     SECRET_KEY_ACCESS:Joi.string().description('the from field in the emails sent by the app'),
+    FAST2SMS_API_KEY: Joi.string().description('Fast2SMS API key for sending OTP'),
+    FAST2SMS_SENDER_ID: Joi.string().description('Fast2SMS sender ID'),
+    FAST2SMS_TEMPLATE_ID: Joi.string().description('Fast2SMS template ID for OTP'),
 
   })
   .unknown();
@@ -69,5 +72,11 @@ module.exports = {
     ACCOUNT_ID:envVars.ACCOUNT_ID,
     ACCESS_KEY_ID:envVars.ACCESS_KEY_ID,
     SECRET_KEY_ACCESS:envVars.SECRET_KEY_ACCESS
+  },
+  fast2sms: {
+    apiKey: envVars.FAST2SMS_API_KEY,
+    senderId: envVars.FAST2SMS_SENDER_ID,
+    templateId: envVars.FAST2SMS_TEMPLATE_ID,
+    url: 'https://www.fast2sms.com/dev/bulkV2'
   }
 };
