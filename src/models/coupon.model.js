@@ -9,7 +9,7 @@ const couponSchema = new mongoose.Schema(
       unique: true,
     },
     code: {
-      type: String, 
+      type: String,
     },
     discount: {
       type: Number,
@@ -40,9 +40,16 @@ const couponSchema = new mongoose.Schema(
     },
     maxUsage: {
       type: Number,
-      default: null, // null means unlimited usage
+      default: null,
     },
     category: {
+      type: String,
+    },
+
+    offerAmount: {
+      type: String,
+    },
+    offerDiscount: {
       type: String,
     },
   },
@@ -57,12 +64,6 @@ couponSchema.plugin(paginate);
 
 // Validation middleware
 couponSchema.pre('save', function (next) {
-  // For percentage discounts, ensure discount is not more than 100%
-  if (this.type === 'percentage' && this.discount > 100) {
-    const err = new Error('Percentage discount cannot be more than 100%');
-    return next(err);
-  }
-
   // For product coupons, ensure products array is not empty if specified
   if (this.couponFor === 'product' && this.products && this.products.length === 0) {
     // Allow empty products array for global product coupons

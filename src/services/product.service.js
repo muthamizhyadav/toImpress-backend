@@ -3,7 +3,6 @@ const { Category, Product } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { uploadMultipleToR2 } = require('../utils/multipleUpload');
 
-
 const uploadMultipleFiles = async (req) => {
   if (req.files) {
     const uploaded = await uploadMultipleToR2(req.files, 'product');
@@ -18,22 +17,31 @@ const createProduct = async (req) => {
   const creation = await Product.create(body);
   return creation;
 };
-
 const getProducts = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const filter = {};
-  const sort = { createdAt: -1 };
-  if (req.query.category) {
-    filter.category = req.query.category;
+  const productSearchQuery = req.query.searchkey || '';
+
+
+  if (productSearchQuery) {
+    productSearch = {
+      productTitle: { $regex: productSearchQuery, $options: 'i' } ,
+    };
   }
-  if (req.query.sortBy) {
-    const sortFields = req.query.sortBy.split(':');
-    sort[sortFields[0]] = sortFields[1] === 'desc' ? -1 : 1;
-  }
-  const products = await Product.find().sort(sort).skip(skip).limit(limit);
-  const total = await Product.countDocuments();
+
+  const result = await Product.aggregate([
+    { $match: productSearch },
+    {
+      $facet: {
+        data: [{ $skip: skip }, { $limit: limit }],
+        totalCount: [{ $count: 'count' }],          
+      },
+    },
+  ]);
+
+  const products = result[0]?.data || [];
+  const total = result[0]?.totalCount[0]?.count || 0;
   const totalPages = Math.ceil(total / limit);
 
   return {
@@ -49,6 +57,7 @@ const getProducts = async (req, res) => {
     },
   };
 };
+
 
 const getProductById = async (req) => {
   const id = req.params.id;
@@ -178,5 +187,5 @@ module.exports = {
   productsByCategories,
   getProductByIdAndSimilerProducts,
   deleteProductById,
-  getProductsByCategory
+  getProductsByCategory,
 };
