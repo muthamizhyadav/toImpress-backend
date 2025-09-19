@@ -39,6 +39,11 @@ const getProductByIdAndSimilerProducts = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(data);
 });
 
+const getProductsByCategory = catchAsync(async (req, res) => {
+  const data = await ProductService.getProductsByCategory(req);
+  res.status(httpStatus.OK).send(data);
+});
+
 const deleteProductById = catchAsync(async (req, res) => {
   const data = await ProductService.deleteProductById(req.params.id);
   res.status(httpStatus.OK).send(data);
@@ -53,4 +58,5 @@ module.exports = {
   productsByCategories,
   getProductByIdAndSimilerProducts,
   deleteProductById,
+  getProductsByCategory,
 };

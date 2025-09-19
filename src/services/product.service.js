@@ -116,16 +116,47 @@ const productsByCategories = async (req) => {
   };
 };
 
+const getProductsByCategory = async (req) => {
+  const categoryName = req.params.categoryName || req.query.category;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  if (!categoryName) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Category name is required');
+  }
+
+  const products = await Product.find({ category: categoryName }).skip(skip).limit(limit);
+  const total = await Product.countDocuments({ category: categoryName });
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    success: true,
+    data: products,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
+};
+
 const getProductByIdAndSimilerProducts = async (req) => {
   const id = req.params.id;
   const product = await Product.findById(id);
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  const getSimilerProduct = await Product.find({ category: product.category }).limit(10);
+  const similarProducts = await Product.find({
+    category: product.category,
+    _id: { $ne: id },
+  }).limit(4);
   return {
-    detail: product,
-    similerProducts: getSimilerProduct,
+    product,
+    similarProducts,
   };
 };
 
@@ -146,5 +177,6 @@ module.exports = {
   updateProductById,
   productsByCategories,
   getProductByIdAndSimilerProducts,
-  deleteProductById
+  deleteProductById,
+  getProductsByCategory
 };

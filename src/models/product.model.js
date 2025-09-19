@@ -56,6 +56,10 @@ const productSchema = mongoose.Schema(
       type: String,
       trime: true,
     },
+    braAttributes: {
+      type: Array,
+      default: [],
+    },
   },
   { timestamp: true }
 );

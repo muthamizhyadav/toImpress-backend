@@ -13,6 +13,7 @@ router.route('/:id')
 	.put(productController.updateProductById)
 	.delete(productController.deleteProductById);
 router.route('/products/by/categories/:id').get(productController.productsByCategories);
+router.route('/products/category/:categoryName').get(productController.getProductsByCategory);
 router.route('/product/detail/:id').get(productController.getProductByIdAndSimilerProducts);
 
 
