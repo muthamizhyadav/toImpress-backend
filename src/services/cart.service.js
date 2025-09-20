@@ -13,13 +13,11 @@ const getCartByUserId = async (userId) => {
 const addToCart = async (userId, productData) => {
   const { productId, quantity = 1, selectedSize } = productData;
 
-  // Validate product exists
   const product = await Product.findById(productId);
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  // Check stock availability only if quantity > 0
   if (quantity > 0 && product.stockQuantity < quantity) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock');
   }
@@ -27,7 +25,6 @@ const addToCart = async (userId, productData) => {
   let cart = await Cart.findOne({ user: userId });
 
   if (!cart) {
-    // Create new cart only if quantity is greater than 0
     if (quantity > 0) {
       const subtotal = (product.salePrice || product.price) * quantity;
       cart = await Cart.create({
@@ -40,15 +37,11 @@ const addToCart = async (userId, productData) => {
         image: product.images?.[0] || '',
       });
     } else {
-      // Return empty cart if quantity is 0
       cart = await Cart.create({ user: userId, product: null, itemqty: 0, totalAmount: 0 });
     }
   } else {
-    // Update existing cart
     if (cart.product && cart.product.toString() === productId) {
-      // Same product, increase quantity
       if (quantity === 0) {
-        // Remove product from cart
         cart.product = null;
         cart.itemqty = 0;
         cart.selectedSize = null;
@@ -56,18 +49,16 @@ const addToCart = async (userId, productData) => {
         cart.subtotal = 0;
         cart.image = '';
       } else {
-        // Add to existing quantity
-        const newQuantity = cart.itemqty + quantity;
-        if (product.stockQuantity < newQuantity) {
+        // Set quantity instead of adding to existing quantity
+        if (product.stockQuantity < quantity) {
           throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock for requested quantity');
         }
 
-        cart.itemqty = newQuantity;
+        cart.itemqty = quantity;
         cart.selectedSize = selectedSize || cart.selectedSize;
-        cart.subtotal = (product.salePrice || product.price) * newQuantity;
+        cart.subtotal = (product.salePrice || product.price) * quantity;
       }
     } else {
-      // Different product, replace it
       if (quantity > 0) {
         const subtotal = (product.salePrice || product.price) * quantity;
         cart.product = productId;
@@ -77,7 +68,6 @@ const addToCart = async (userId, productData) => {
         cart.subtotal = subtotal;
         cart.image = product.images?.[0] || '';
       } else {
-        // Remove product if quantity is 0
         cart.product = null;
         cart.itemqty = 0;
         cart.selectedSize = null;
@@ -90,7 +80,7 @@ const addToCart = async (userId, productData) => {
     await cart.save();
   }
 
-  return await cart.populate('product');
+  return cart.product ? await cart.populate('product') : cart;
 };
 
 const updateCart = async (userId, updateData) => {
@@ -114,7 +104,7 @@ const updateCart = async (userId, updateData) => {
     cart.subtotal = 0;
     cart.image = '';
     await cart.save();
-    return await cart.populate('product');
+    return cart.product ? await cart.populate('product') : cart;
   }
 
   const product = await Product.findById(cart.product);
@@ -134,7 +124,7 @@ const updateCart = async (userId, updateData) => {
   cart.subtotal = (product.salePrice || product.price) * quantity;
 
   await cart.save();
-  return await cart.populate('product');
+  return cart.product ? await cart.populate('product') : cart;
 };
 
 const removeFromCart = async (userId) => {
@@ -151,7 +141,7 @@ const removeFromCart = async (userId) => {
   cart.image = '';
   await cart.save();
 
-  return await cart.populate('product');
+  return cart;
 };
 
 const clearCart = async (userId) => {
@@ -173,10 +163,16 @@ const clearCart = async (userId) => {
 };
 
 const getCart = async (userId) => {
-  const cart = await Cart.findOne({ user: userId }).populate('product');
+  let cart = await Cart.findOne({ user: userId });
   if (!cart) {
     return await Cart.create({ user: userId, product: null, itemqty: 0, totalAmount: 0 });
   }
+  
+  // Only populate if there's a product
+  if (cart.product) {
+    cart = await Cart.findOne({ user: userId }).populate('product');
+  }
+  
   return cart;
 };
 

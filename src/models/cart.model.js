@@ -16,23 +16,19 @@ const cartSchema = mongoose.Schema(
     },
     product: {
       type: String,
-      required: true,
+      required: false,
     },
     itemqty: {
       type: Number,
-      required: true,
-      min: 1,
-      default: 1,
+      required: false,
+      min: 0,
+      default: 0,
     },
     image: {
       type: String,
     },
     selectedSize: {
       type: String,
-    },
-    totalAmount: {
-      type: Number,
-      default: 0,
     },
   },
   {
