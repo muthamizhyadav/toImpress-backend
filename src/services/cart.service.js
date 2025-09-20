@@ -49,11 +49,6 @@ const addToCart = async (userId, productData) => {
         cart.subtotal = 0;
         cart.image = '';
       } else {
-        // Set quantity instead of adding to existing quantity
-        if (product.stockQuantity < quantity) {
-          throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock for requested quantity');
-        }
-
         cart.itemqty = quantity;
         cart.selectedSize = selectedSize || cart.selectedSize;
         cart.subtotal = (product.salePrice || product.price) * quantity;
