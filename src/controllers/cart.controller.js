@@ -9,11 +9,16 @@ const addToCart = catchAsync(async (req, res) => {
 
   // Get cart before the operation to compare
   const cartBefore = await cartService.getCart(userId);
-  const existingItem = cartBefore?.items?.find(item =>
-    item?.product.toString() === productId &&
-    item?.selectedColor === selectedColor &&
-    item?.selectedSize === selectedSize
-  );
+  let existingItem;
+
+  if (cartBefore?.length) {
+    existingItem = cartBefore?.items?.find(
+      (item) =>
+        item?.product.toString() === productId &&
+        item?.selectedColor === selectedColor &&
+        item?.selectedSize === selectedSize
+    );
+  }
 
   const cart = await cartService.addToCart(userId, cartData);
 
