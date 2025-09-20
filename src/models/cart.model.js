@@ -35,14 +35,11 @@ const cartSchema = mongoose.Schema(
   }
 );
 
-// add plugin that converts mongoose to json
 cartSchema.plugin(toJSON);
 cartSchema.plugin(paginate);
 
-// Index for better performance
 cartSchema.index({ user: 1 });
 
-// Calculate totals before saving
 cartSchema.pre('save', function (next) {
   this.totalAmount = this.subtotal || 0;
   next();
