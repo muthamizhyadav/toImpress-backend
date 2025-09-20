@@ -217,7 +217,12 @@ const getCart = async (userId) => {
         },
         isOfferAvailable: {
           $cond: {
-            if: { $ne: ['$availableCoupons', null] },
+            if: {
+              $and: [
+                { $ne: ['$availableCoupons', null] },
+                { $ne: [ { $ifNull: ['$availableCoupons.type', null] }, null ] }
+              ]
+            },
             then: true,
             else: false
           }
