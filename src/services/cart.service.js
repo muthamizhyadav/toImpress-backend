@@ -179,6 +179,29 @@ const getCart = async (userId) => {
       $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true },
     },
     {
+      $lookup: {
+        from: 'coupons',
+        let: { productId: '$product' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $in: ['$$productId', '$products'] },
+                  { $eq: ['$isActive', true] }
+                ]
+              }
+            }
+          }
+        ],
+        as: 'availableCoupons',
+      },
+    },
+    {
+      $unwind: { path: '$availableCoupons', preserveNullAndEmptyArrays: true },
+    },
+
+    {
       $project: {
         _id: 1,
         productName: '$productDetails.productTitle',
@@ -187,6 +210,23 @@ const getCart = async (userId) => {
         price: '$productDetails.price',
         salePrice: '$productDetails.salePrice',
         image: 1,
+        product: 1,
+        couponDiscount: {
+          $ifNull: ['$availableCoupons.discount', null]
+        },
+        couponOfferDiscount: {
+          $ifNull: ['$availableCoupons.offerDiscount', null]
+        },
+        couponType: {
+          $ifNull: ['$availableCoupons.type', null]
+        },
+        isOfferAvailable: {
+          $cond: {
+            if: { $ne: ['$availableCoupons', null] },
+            then: true,
+            else: false
+          }
+        },
         discountPercentage: {
           $cond: [
             { $gt: ['$productDetails.price', 0] },
