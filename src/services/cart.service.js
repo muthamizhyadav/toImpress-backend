@@ -22,7 +22,7 @@ const addToCart = async (userId, productData) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock');
   }
 
-  let cart = await Cart.findOne({ user: userId });
+  let cart = await Cart.findOne({ user: userId, product: productId });
 
   if (!cart) {
     if (quantity > 0) {
