@@ -5,7 +5,6 @@ const { toJSON, paginate } = require('./plugins');
 const cartItemSchema = mongoose.Schema({
   product: {
     type: String,
-    ref: 'Product',
     required: true,
   },
   productTitle: {
