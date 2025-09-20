@@ -12,7 +12,6 @@ const cartSchema = mongoose.Schema(
       type: String,
       ref: 'User',
       required: true,
-      unique: true,
     },
     product: {
       type: String,
