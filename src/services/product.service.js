@@ -85,7 +85,7 @@ const productsByCategories = async (req) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const userId = req.user?.id || null;
-  
+
   let name;
   switch (id) {
     case 1:
@@ -114,11 +114,50 @@ const productsByCategories = async (req) => {
 
   const findProductsByCategory = await Product.aggregate([
     { $match: { category: name } },
+
+    {
+      $lookup: {
+        from: 'carts',
+        let: { productId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [{ $eq: ['$product', '$$productId'] }, { $eq: ['$user', userId] }],
+              },
+            },
+          },
+        ],
+        as: 'cart',
+      },
+    },
+
     { $skip: skip },
     { $limit: limit },
   ]);
 
-  const totalCount = await Product.countDocuments({ category: name });
+  const totalCountAgg = await Product.aggregate([
+    { $match: { category: name } },
+    {
+      $lookup: {
+        from: 'carts',
+        let: { productId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [{ $eq: ['$product', '$$productId'] }, { $eq: ['$user', userId] }],
+              },
+            },
+          },
+        ],
+        as: 'cart',
+      },
+    },
+    { $count: 'total' },
+  ]);
+
+  const totalCount = totalCountAgg.length > 0 ? totalCountAgg[0].total : 0;
 
   return {
     data: findProductsByCategory,
