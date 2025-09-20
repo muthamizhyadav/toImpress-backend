@@ -4,7 +4,7 @@ const { objectId } = require('./custom.validation');
 const addToCart = {
   body: Joi.object().keys({
     productId: Joi.string().required(),
-    quantity: Joi.number().integer().min(1).default(1),
+    quantity: Joi.number().integer().min(0).default(1),
     selectedColor: Joi.string().optional(),
     selectedSize: Joi.string().optional(),
     selectedImage: Joi.string().optional(),
@@ -16,7 +16,7 @@ const updateCartItem = {
     itemId: Joi.string().required(),
   }),
   body: Joi.object().keys({
-    quantity: Joi.number().integer().min(1).required(),
+    quantity: Joi.number().integer().min(0).required(),
     selectedColor: Joi.string().optional(),
     selectedSize: Joi.string().optional(),
   }),

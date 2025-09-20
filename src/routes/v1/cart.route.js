@@ -9,7 +9,7 @@ const router = express.Router();
 router
   .route('/')
   .get(auth(), validate(cartValidation.getCart), cartController.getCart)
-  .post(auth(), validate(cartValidation.addToCart), cartController.addToCart)
+  .post(auth(), cartController.addToCart)
   .delete(auth(), cartController.clearCart);
 
 router
@@ -53,8 +53,8 @@ module.exports = router;
  *         $ref: '#/components/responses/Forbidden'
  *
  *   post:
- *     summary: Add item to cart
- *     description: Add a product to the user's shopping cart
+ *     summary: Add or update item in cart
+ *     description: Add a new item to cart or update existing item quantity. Set quantity to 0 to remove item from cart.
  *     tags: [Cart]
  *     security:
  *       - bearerAuth: []
@@ -69,12 +69,12 @@ module.exports = router;
  *             properties:
  *               productId:
  *                 type: string
- *                 description: Product ID to add to cart
+ *                 description: Product ID to add/update in cart
  *               quantity:
  *                 type: integer
- *                 minimum: 1
+ *                 minimum: 0
  *                 default: 1
- *                 description: Quantity of the product
+ *                 description: Quantity of the product (set to 0 to remove item)
  *               selectedColor:
  *                 type: string
  *                 description: Selected color variant
@@ -88,7 +88,7 @@ module.exports = router;
  *               selectedSize: "M"
  *     responses:
  *       200:
- *         description: Item added to cart successfully
+ *         description: Item added, updated, or removed from cart successfully
  *         content:
  *           application/json:
  *             schema:
@@ -138,7 +138,7 @@ module.exports = router;
  * /cart/{itemId}:
  *   patch:
  *     summary: Update cart item
- *     description: Update quantity or variants of a cart item
+ *     description: Update quantity or variants of a cart item. Set quantity to 0 to remove the item from cart.
  *     tags: [Cart]
  *     security:
  *       - bearerAuth: []
@@ -160,8 +160,8 @@ module.exports = router;
  *             properties:
  *               quantity:
  *                 type: integer
- *                 minimum: 1
- *                 description: New quantity for the item
+ *                 minimum: 0
+ *                 description: New quantity for the item (set to 0 to remove item)
  *               selectedColor:
  *                 type: string
  *                 description: Updated color variant
@@ -174,7 +174,7 @@ module.exports = router;
  *               selectedSize: "L"
  *     responses:
  *       200:
- *         description: Cart item updated successfully
+ *         description: Cart item updated or removed successfully
  *         content:
  *           application/json:
  *             schema:

@@ -19,30 +19,35 @@ const addToCart = async (userId, productData) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  // Check stock availability
-  if (product.stockQuantity < quantity) {
+  // Check stock availability only if quantity > 0
+  if (quantity > 0 && product.stockQuantity < quantity) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock');
   }
 
   let cart = await Cart.findOne({ user: userId });
 
   if (!cart) {
-    // Create new cart
-    const subtotal = (product.salePrice || product.price) * quantity;
-    cart = await Cart.create({
-      user: userId,
-      items: [{
-        product: productId,
-        productTitle: product.productTitle,
-        price: product.price,
-        salePrice: product.salePrice,
-        quantity,
-        selectedColor,
-        selectedSize,
-        subtotal,
-        image: product.images?.[0] || '',
-      }],
-    });
+    // Create new cart only if quantity is greater than 0
+    if (quantity > 0) {
+      const subtotal = (product.salePrice || product.price) * quantity;
+      cart = await Cart.create({
+        user: userId,
+        items: [{
+          product: productId,
+          productTitle: product.productTitle,
+          price: product.price,
+          salePrice: product.salePrice,
+          quantity,
+          selectedColor,
+          selectedSize,
+          subtotal,
+          image: product.images?.[0] || '',
+        }],
+      });
+    } else {
+      // Return empty cart if quantity is 0
+      cart = await Cart.create({ user: userId, items: [], totalAmount: 0, itemCount: 0 });
+    }
   } else {
     // Update existing cart
     const existingItemIndex = cart.items.findIndex(item =>
@@ -52,29 +57,34 @@ const addToCart = async (userId, productData) => {
     );
 
     if (existingItemIndex > -1) {
-      // Update quantity of existing item
-      const newQuantity = cart.items[existingItemIndex].quantity + quantity;
+      // If quantity is 0, remove the item from cart
+      if (quantity === 0) {
+        cart.items.splice(existingItemIndex, 1);
+      } else {
+        // Replace quantity instead of adding to existing quantity
+        if (product.stockQuantity < quantity) {
+          throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock for requested quantity');
+        }
 
-      if (product.stockQuantity < newQuantity) {
-        throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock for requested quantity');
+        cart.items[existingItemIndex].quantity = quantity;
+        cart.items[existingItemIndex].subtotal = (product.salePrice || product.price) * quantity;
       }
-
-      cart.items[existingItemIndex].quantity = newQuantity;
-      cart.items[existingItemIndex].subtotal = (product.salePrice || product.price) * newQuantity;
     } else {
-      // Add new item
-      const subtotal = (product.salePrice || product.price) * quantity;
-      cart.items.push({
-        product: productId,
-        productTitle: product.productTitle,
-        price: product.price,
-        salePrice: product.salePrice,
-        quantity,
-        selectedColor,
-        selectedSize,
-        subtotal,
-        image: product.images?.[0] || '',
-      });
+      // Only add new item if quantity is not 0
+      if (quantity > 0) {
+        const subtotal = (product.salePrice || product.price) * quantity;
+        cart.items.push({
+          product: productId,
+          productTitle: product.productTitle,
+          price: product.price,
+          salePrice: product.salePrice,
+          quantity,
+          selectedColor,
+          selectedSize,
+          subtotal,
+          image: product.images?.[0] || '',
+        });
+      }
     }
 
     await cart.save();
@@ -94,6 +104,13 @@ const updateCartItem = async (userId, itemId, updateData) => {
   const itemIndex = cart.items.findIndex(item => item._id.toString() === itemId);
   if (itemIndex === -1) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Cart item not found');
+  }
+
+  // If quantity is 0, remove the item from cart
+  if (quantity === 0) {
+    cart.items.splice(itemIndex, 1);
+    await cart.save();
+    return await cart.populate('items.product');
   }
 
   const item = cart.items[itemIndex];
