@@ -13,7 +13,7 @@ const addToCart = {
 
 const updateCartItem = {
   params: Joi.object().keys({
-    itemId: Joi.string().custom(objectId).required(),
+    itemId: Joi.string().required(),
   }),
   body: Joi.object().keys({
     quantity: Joi.number().integer().min(1).required(),
