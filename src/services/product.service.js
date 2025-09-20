@@ -23,10 +23,9 @@ const getProducts = async (req, res) => {
   const skip = (page - 1) * limit;
   const productSearchQuery = req.query.searchkey || '';
 
-
   if (productSearchQuery) {
     productSearch = {
-      productTitle: { $regex: productSearchQuery, $options: 'i' } ,
+      productTitle: { $regex: productSearchQuery, $options: 'i' },
     };
   }
 
@@ -35,7 +34,7 @@ const getProducts = async (req, res) => {
     {
       $facet: {
         data: [{ $skip: skip }, { $limit: limit }],
-        totalCount: [{ $count: 'count' }],          
+        totalCount: [{ $count: 'count' }],
       },
     },
   ]);
@@ -57,7 +56,6 @@ const getProducts = async (req, res) => {
     },
   };
 };
-
 
 const getProductById = async (req) => {
   const id = req.params.id;
@@ -86,7 +84,8 @@ const productsByCategories = async (req) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-
+  const userId = req.user?.id || null;
+  
   let name;
   switch (id) {
     case 1:
@@ -113,7 +112,11 @@ const productsByCategories = async (req) => {
 
   if (!name) return [];
 
-  const findProductsByCategory = await Product.find({ category: name }).skip(skip).limit(limit);
+  const findProductsByCategory = await Product.aggregate([
+    { $match: { category: name } },
+    { $skip: skip },
+    { $limit: limit },
+  ]);
 
   const totalCount = await Product.countDocuments({ category: name });
 

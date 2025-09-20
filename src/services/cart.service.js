@@ -3,15 +3,15 @@ const { Cart, Product } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 const getCartByUserId = async (userId) => {
-  let cart = await Cart.findOne({ user: userId }).populate('items.product');
+  let cart = await Cart.findOne({ user: userId }).populate('product');
   if (!cart) {
-    cart = await Cart.create({ user: userId, items: [], totalAmount: 0, itemCount: 0 });
+    cart = await Cart.create({ user: userId, product: null, itemqty: 0, totalAmount: 0 });
   }
   return cart;
 };
 
 const addToCart = async (userId, productData) => {
-  const { productId, quantity = 1, selectedColor, selectedSize } = productData;
+  const { productId, quantity = 1, selectedSize } = productData;
 
   // Validate product exists
   const product = await Product.findById(productId);
@@ -32,89 +32,92 @@ const addToCart = async (userId, productData) => {
       const subtotal = (product.salePrice || product.price) * quantity;
       cart = await Cart.create({
         user: userId,
-        items: [{
-          product: productId,
-          productTitle: product.productTitle,
-          price: product.price,
-          salePrice: product.salePrice,
-          quantity,
-          selectedColor,
-          selectedSize,
-          subtotal,
-          image: product.images?.[0] || '',
-        }],
+        product: productId,
+        itemqty: quantity,
+        selectedSize,
+        price: product.price,
+        subtotal,
+        image: product.images?.[0] || '',
       });
     } else {
       // Return empty cart if quantity is 0
-      cart = await Cart.create({ user: userId, items: [], totalAmount: 0, itemCount: 0 });
+      cart = await Cart.create({ user: userId, product: null, itemqty: 0, totalAmount: 0 });
     }
   } else {
     // Update existing cart
-    const existingItemIndex = cart.items.findIndex(item =>
-      item.product.toString() === productId &&
-      item.selectedColor === selectedColor &&
-      item.selectedSize === selectedSize
-    );
-
-    if (existingItemIndex > -1) {
-      // If quantity is 0, remove the item from cart
+    if (cart.product && cart.product.toString() === productId) {
+      // Same product, increase quantity
       if (quantity === 0) {
-        cart.items.splice(existingItemIndex, 1);
+        // Remove product from cart
+        cart.product = null;
+        cart.itemqty = 0;
+        cart.selectedSize = null;
+        cart.price = 0;
+        cart.subtotal = 0;
+        cart.image = '';
       } else {
-        // Replace quantity instead of adding to existing quantity
-        if (product.stockQuantity < quantity) {
+        // Add to existing quantity
+        const newQuantity = cart.itemqty + quantity;
+        if (product.stockQuantity < newQuantity) {
           throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock for requested quantity');
         }
 
-        cart.items[existingItemIndex].quantity = quantity;
-        cart.items[existingItemIndex].subtotal = (product.salePrice || product.price) * quantity;
+        cart.itemqty = newQuantity;
+        cart.selectedSize = selectedSize || cart.selectedSize;
+        cart.subtotal = (product.salePrice || product.price) * newQuantity;
       }
     } else {
-      // Only add new item if quantity is not 0
+      // Different product, replace it
       if (quantity > 0) {
         const subtotal = (product.salePrice || product.price) * quantity;
-        cart.items.push({
-          product: productId,
-          productTitle: product.productTitle,
-          price: product.price,
-          salePrice: product.salePrice,
-          quantity,
-          selectedColor,
-          selectedSize,
-          subtotal,
-          image: product.images?.[0] || '',
-        });
+        cart.product = productId;
+        cart.itemqty = quantity;
+        cart.selectedSize = selectedSize;
+        cart.price = product.price;
+        cart.subtotal = subtotal;
+        cart.image = product.images?.[0] || '';
+      } else {
+        // Remove product if quantity is 0
+        cart.product = null;
+        cart.itemqty = 0;
+        cart.selectedSize = null;
+        cart.price = 0;
+        cart.subtotal = 0;
+        cart.image = '';
       }
     }
 
     await cart.save();
   }
 
-  return await cart.populate('items.product');
+  return await cart.populate('product');
 };
 
-const updateCartItem = async (userId, itemId, updateData) => {
-  const { quantity, selectedColor, selectedSize } = updateData;
+const updateCart = async (userId, updateData) => {
+  const { quantity, selectedSize } = updateData;
 
   const cart = await Cart.findOne({ user: userId });
   if (!cart) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
-  const itemIndex = cart.items.findIndex(item => item._id.toString() === itemId);
-  if (itemIndex === -1) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Cart item not found');
+  if (!cart.product) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'No product in cart');
   }
 
-  // If quantity is 0, remove the item from cart
+  // If quantity is 0, remove the product from cart
   if (quantity === 0) {
-    cart.items.splice(itemIndex, 1);
+    cart.product = null;
+    cart.itemqty = 0;
+    cart.selectedSize = null;
+    cart.price = 0;
+    cart.subtotal = 0;
+    cart.image = '';
     await cart.save();
-    return await cart.populate('items.product');
+    return await cart.populate('product');
   }
 
-  const item = cart.items[itemIndex];
-  const product = await Product.findById(item.product);
+  const product = await Product.findById(cart.product);
 
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
@@ -125,31 +128,30 @@ const updateCartItem = async (userId, itemId, updateData) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock');
   }
 
-  // Update item
-  cart.items[itemIndex].quantity = quantity;
-  cart.items[itemIndex].selectedColor = selectedColor || item.selectedColor;
-  cart.items[itemIndex].selectedSize = selectedSize || item.selectedSize;
-  cart.items[itemIndex].subtotal = (product.salePrice || product.price) * quantity;
+  // Update cart
+  cart.itemqty = quantity;
+  cart.selectedSize = selectedSize || cart.selectedSize;
+  cart.subtotal = (product.salePrice || product.price) * quantity;
 
   await cart.save();
-  return await cart.populate('items.product');
+  return await cart.populate('product');
 };
 
-const removeFromCart = async (userId, itemId) => {
+const removeFromCart = async (userId) => {
   const cart = await Cart.findOne({ user: userId });
   if (!cart) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
-  const itemIndex = cart.items.findIndex(item => item._id.toString() === itemId);
-  if (itemIndex === -1) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Cart item not found');
-  }
-
-  cart.items.splice(itemIndex, 1);
+  cart.product = null;
+  cart.itemqty = 0;
+  cart.selectedSize = null;
+  cart.price = 0;
+  cart.subtotal = 0;
+  cart.image = '';
   await cart.save();
 
-  return await cart.populate('items.product');
+  return await cart.populate('product');
 };
 
 const clearCart = async (userId) => {
@@ -158,18 +160,22 @@ const clearCart = async (userId) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
-  cart.items = [];
+  cart.product = null;
+  cart.itemqty = 0;
+  cart.selectedSize = null;
+  cart.price = 0;
+  cart.subtotal = 0;
+  cart.image = '';
   cart.totalAmount = 0;
-  cart.itemCount = 0;
   await cart.save();
 
   return cart;
 };
 
 const getCart = async (userId) => {
-  const cart = await Cart.findOne({ user: userId }).populate('items.product');
+  const cart = await Cart.findOne({ user: userId }).populate('product');
   if (!cart) {
-    return await Cart.create({ user: userId, items: [], totalAmount: 0, itemCount: 0 });
+    return await Cart.create({ user: userId, product: null, itemqty: 0, totalAmount: 0 });
   }
   return cart;
 };
@@ -177,7 +183,7 @@ const getCart = async (userId) => {
 module.exports = {
   getCartByUserId,
   addToCart,
-  updateCartItem,
+  updateCart,
   removeFromCart,
   clearCart,
   getCart,

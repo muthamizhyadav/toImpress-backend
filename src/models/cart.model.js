@@ -2,46 +2,6 @@ const mongoose = require('mongoose');
 const { v4 } = require('uuid');
 const { toJSON, paginate } = require('./plugins');
 
-const cartItemSchema = mongoose.Schema({
-  product: {
-    type: String,
-    required: true,
-  },
-  productTitle: {
-    type: String,
-    required: true,
-  },
-  price: {
-    type: Number,
-    required: true,
-  },
-  salePrice: {
-    type: Number,
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1,
-    default: 1,
-  },
-  selectedColor: {
-    type: String,
-  },
-  selectedImage:{
-    type:String
-  },
-  selectedSize: {
-    type: String,
-  },
-  subtotal: {
-    type: Number,
-    required: true,
-  },
-  image: {
-    type: String,
-  },
-});
-
 const cartSchema = mongoose.Schema(
   {
     _id: {
@@ -54,12 +14,31 @@ const cartSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
-    items: [cartItemSchema],
-    totalAmount: {
-      type: Number,
-      default: 0,
+    product: {
+      type: String,
+      required: true,
     },
-    itemCount: {
+    itemqty: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 1,
+    },
+    image: {
+      type: String,
+    },
+    selectedSize: {
+      type: String,
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
+    subtotal: {
+      type: Number,
+      required: true,
+    },
+    totalAmount: {
       type: Number,
       default: 0,
     },
@@ -78,8 +57,7 @@ cartSchema.index({ user: 1 });
 
 // Calculate totals before saving
 cartSchema.pre('save', function (next) {
-  this.itemCount = this.items.length;
-  this.totalAmount = this.items.reduce((total, item) => total + item.subtotal, 0);
+  this.totalAmount = this.subtotal || 0;
   next();
 });
 

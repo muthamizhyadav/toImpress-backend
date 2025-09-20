@@ -12,20 +12,14 @@ const addToCart = {
 };
 
 const updateCartItem = {
-  params: Joi.object().keys({
-    itemId: Joi.string().required(),
-  }),
   body: Joi.object().keys({
     quantity: Joi.number().integer().min(0).required(),
-    selectedColor: Joi.string().optional(),
     selectedSize: Joi.string().optional(),
   }),
 };
 
 const removeFromCart = {
-  params: Joi.object().keys({
-    itemId: Joi.string().custom(objectId).required(),
-  }),
+  // No parameters needed since we're removing the current cart item
 };
 
 const getCart = {

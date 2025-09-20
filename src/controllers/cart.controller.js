@@ -5,20 +5,11 @@ const cartService = require('../services/cart.service');
 const addToCart = catchAsync(async (req, res) => {
   const userId = req.user.id;
   const cartData = req.body;
-  const { productId, quantity = 1, selectedColor, selectedSize } = cartData;
+  const { productId, quantity = 1, selectedSize } = cartData;
 
   // Get cart before the operation to compare
   const cartBefore = await cartService.getCart(userId);
-  let existingItem;
-
-  if (cartBefore?.length) {
-    existingItem = cartBefore?.items?.find(
-      (item) =>
-        item?.product.toString() === productId &&
-        item?.selectedColor === selectedColor &&
-        item?.selectedSize === selectedSize
-    );
-  }
+  let existingItem = cartBefore?.product?.toString() === productId;
 
   const cart = await cartService.addToCart(userId, cartData);
 
@@ -50,15 +41,14 @@ const getCart = catchAsync(async (req, res) => {
   });
 });
 
-const updateCartItem = catchAsync(async (req, res) => {
+const updateCart = catchAsync(async (req, res) => {
   const userId = req.user.id;
-  const { itemId } = req.params;
   const updateData = req.body;
 
   // Check if quantity is 0 (item should be removed)
   const isRemovingItem = updateData.quantity === 0;
 
-  const cart = await cartService.updateCartItem(userId, itemId, updateData);
+  const cart = await cartService.updateCart(userId, updateData);
   res.status(httpStatus.OK).send({
     success: true,
     message: isRemovingItem ? 'Item removed from cart successfully' : 'Cart item updated successfully',
@@ -68,8 +58,7 @@ const updateCartItem = catchAsync(async (req, res) => {
 
 const removeFromCart = catchAsync(async (req, res) => {
   const userId = req.user.id;
-  const { itemId } = req.params;
-  const cart = await cartService.removeFromCart(userId, itemId);
+  const cart = await cartService.removeFromCart(userId);
   res.status(httpStatus.OK).send({
     success: true,
     message: 'Item removed from cart successfully',
@@ -90,7 +79,7 @@ const clearCart = catchAsync(async (req, res) => {
 module.exports = {
   addToCart,
   getCart,
-  updateCartItem,
+  updateCart,
   removeFromCart,
   clearCart,
 };

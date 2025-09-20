@@ -10,11 +10,11 @@ router
   .route('/')
   .get(auth(), validate(cartValidation.getCart), cartController.getCart)
   .post(auth(), cartController.addToCart)
+  .patch(auth(), validate(cartValidation.updateCartItem), cartController.updateCart)
   .delete(auth(), cartController.clearCart);
 
 router
-  .route('/:itemId')
-  .patch(auth(), validate(cartValidation.updateCartItem), cartController.updateCartItem)
+  .route('/item')
   .delete(auth(), validate(cartValidation.removeFromCart), cartController.removeFromCart);
 
 module.exports = router;
