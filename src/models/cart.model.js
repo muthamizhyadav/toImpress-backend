@@ -30,14 +30,6 @@ const cartSchema = mongoose.Schema(
     selectedSize: {
       type: String,
     },
-    price: {
-      type: Number,
-      required: true,
-    },
-    subtotal: {
-      type: Number,
-      required: true,
-    },
     totalAmount: {
       type: Number,
       default: 0,
