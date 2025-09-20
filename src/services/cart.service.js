@@ -163,16 +163,56 @@ const clearCart = async (userId) => {
 };
 
 const getCart = async (userId) => {
-  let cart = await Cart.findOne({ user: userId });
-  if (!cart) {
-    return await Cart.create({ user: userId, product: null, itemqty: 0, totalAmount: 0 });
-  }
-  
-  // Only populate if there's a product
-  if (cart.product) {
-    cart = await Cart.findOne({ user: userId }).populate('product');
-  }
-  
+  let cart = await Cart.aggregate([
+    {
+      $match: { user: userId },
+    },
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'product',
+        foreignField: '_id',
+        as: 'productDetails',
+      },
+    },
+    {
+      $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true },
+    },
+    {
+      $project: {
+        _id: 1,
+        productName: '$productDetails.productTitle',
+        selectedSize: 1,
+        itemqty: 1,
+        price: '$productDetails.price',
+        salePrice: '$productDetails.salePrice',
+        image: 1,
+        discountPercentage: {
+          $cond: [
+            { $gt: ['$productDetails.price', 0] },
+            {
+              $multiply: [
+                {
+                  $divide: [
+                    {
+                      $subtract: [
+                        '$productDetails.price',
+                        '$productDetails.salePrice',
+                      ],
+                    },
+                    '$productDetails.price',
+                  ],
+                },
+                100,
+              ],
+            },
+            0,
+          ],
+        },
+      },
+    },
+  ]);
+
   return cart;
 };
 

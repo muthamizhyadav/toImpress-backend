@@ -22,7 +22,7 @@ const getProducts = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const productSearchQuery = req.query.searchkey || '';
-
+  let productSearch = {_id:{$ne:null}}; 
   if (productSearchQuery) {
     productSearch = {
       productTitle: { $regex: productSearchQuery, $options: 'i' },
@@ -84,8 +84,9 @@ const productsByCategories = async (req) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const userId = req.user?.id || null;
-
+  const userId =req.user.id || null;
+  console.log(userId,"USER");
+  
   let name;
   switch (id) {
     case 1:

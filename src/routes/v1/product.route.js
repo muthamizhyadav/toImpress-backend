@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { productController } = require('../../controllers');
 const multer = require('multer');
+const auth = require('../../middlewares/auth');
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -12,7 +13,7 @@ router.route('/:id')
 	.get(productController.getProductById)
 	.put(productController.updateProductById)
 	.delete(productController.deleteProductById);
-router.route('/products/by/categories/:id').get(productController.productsByCategories);
+router.route('/products/by/categories/:id').get(auth(), productController.productsByCategories);
 router.route('/products/category/:categoryName').get(productController.getProductsByCategory);
 router.route('/product/detail/:id').get(productController.getProductByIdAndSimilerProducts);
 
