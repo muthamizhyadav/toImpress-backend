@@ -4,6 +4,7 @@ module.exports.productController = require('./product.controller');
 module.exports.userHomeController = require('./user.home.controller');
 module.exports.orderController = require('./order.controller');
 module.exports.reviewController = require('./review.controller');
+module.exports.cartController = require('./cart.controller');
 
 module.exports.paymentController = require('./payment.controller');
 

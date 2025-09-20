@@ -97,7 +97,6 @@ async function sendOtp(mobile, otp = null) {
         return {
           success: true,
           message: "OTP sent successfully (development fallback)",
-          otp: otp,
           development: true,
           mobile: mobile,
           error: apiError.message,
@@ -107,7 +106,7 @@ async function sendOtp(mobile, otp = null) {
     }
 
     // Fallback for development mode when no Fast2SMS config
-    console.log(`OTP for ${mobile}: ${otp} (Fast2SMS not configured - development mode)`);
+    console.log(`OTP for ${mobile}: ${otp} (Fast2SMS not oka configured - development mode)`);
     return {
       success: true,
       message: "OTP sent successfully (development mode)",

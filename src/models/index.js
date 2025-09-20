@@ -7,3 +7,4 @@ module.exports.Review = require('./review.model');
 module.exports.RazorpayOrder = require('./razorpayOrder.model');
 module.exports.DelhiveryOrder = require('./delhiveryOrder.model');
 module.exports.Coupon = require('./coupon.model');
+module.exports.Cart = require('./cart.model');
