@@ -10,27 +10,32 @@ const razorpay = new Razorpay({
 const { RazorpayOrder } = require('../models');
 
 const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes,items },userId) => {
-  const order = await razorpay.orders.create({
-    amount,
-    currency,
-    receipt,
-    notes,
-  });
+  try {
+    const order = await razorpay.orders.create({
+      amount,
+      currency,
+      receipt,
+      notes,
+    });
 
-  // Store in MongoDB
-  await RazorpayOrder.create({
-    orderId: order.id,
-    amount: order.amount,
-    currency: order.currency,
-    receipt: order.receipt,
-    notes: order.notes,
-    status: order.status,
-    raw: order,
-    items: items || [],
-    userId: userId || null,
-  });
+    // Store in MongoDB
+    await RazorpayOrder.create({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      receipt: order.receipt,
+      notes: order.notes,
+      status: order.status,
+      raw: order,
+      items: items || [],
+      userId: userId || null,
+    });
 
-  return order;
+    return order;
+  } catch (error) {
+    console.error('Razorpay order creation error:', error);
+    throw error;
+  }
 };
 
 const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {

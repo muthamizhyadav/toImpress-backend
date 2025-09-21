@@ -3,6 +3,7 @@ const catchAsync = require('../utils/catchAsync');
 const paymentService = require('../services/payment.service');
 
 const createRazorpayOrder = catchAsync(async (req, res) => {
+  console.log('Creating Razorpay order with body:', req.body, 'user:', req.user._id);
   const order = await paymentService.createRazorpayOrder(req.body,req.user._id);
   res.status(httpStatus.OK).json(order);
 });
