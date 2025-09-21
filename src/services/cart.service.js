@@ -221,7 +221,7 @@ const getCart = async (userId) => {
   let couponsProduct = cart.filter((item) => item.isOfferAvailable);
 
   let totalSalesPrice = couponsProduct?.length ? couponsProduct.reduce((acc, item) => {
-    const price = Number(item.salePrice) || 0;
+    const price = Number(item.salePrice * item.itemqty) || 0;
     return acc + price;
   }, 0) : 0;
 
@@ -244,7 +244,7 @@ const getCart = async (userId) => {
     minusValue = couponAmount;
   }
 
-  return { data: cart, couponsProduct, totalSalesPrice, couponAmount, type, discountvalue, isDiscountApplicable, discountedAmount, minusValue };
+  return { data: cart, couponsProduct, totalSalesPrice, couponAmount, type, discountvalue, isDiscountApplicable, finalAmount:discountedAmount, minusValue };
 };
 
 module.exports = {
