@@ -48,7 +48,7 @@ const shippingAddressSchema = mongoose.Schema({
     required: true,
     trim: true,
   },
-  zipCode: {
+  zip: {
     type: String,
     required: true,
     trim: true,
@@ -73,8 +73,6 @@ const orderSchema = mongoose.Schema(
     },
     user: {
       type: String,
-      ref: 'User',
-      required: true,
     },
     items: [orderItemSchema],
     totalAmount: {

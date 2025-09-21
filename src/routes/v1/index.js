@@ -51,14 +51,14 @@ const defaultRoutes = [
     path: '/cart',
     route: cartRoute,
   },
-    {
-      path: '/payments',
-      route: require('./payment.route'),
-    },
-      {
-        path: '/delhivery',
-        route: require('./delhivery.route'),
-      },
+  {
+    path: '/payments',
+    route: require('./payment.route'),
+  },
+  {
+    path: '/delhivery',
+    route: require('./delhivery.route'),
+  },
 ];
 
 const devRoutes = [

@@ -14,22 +14,42 @@ const createOrder = {
       )
       .min(1)
       .required(),
-    shippingAddress: Joi.object()
-      .keys({
+    shippingAddress: Joi.alternatives().try(
+      Joi.object().keys({
         street: Joi.string().required(),
         city: Joi.string().required(),
         state: Joi.string().required(),
         zipCode: Joi.string().required(),
         country: Joi.string().required(),
-      })
-      .required(),
-    billingAddress: Joi.object().keys({
-      street: Joi.string().required(),
-      city: Joi.string().required(),
-      state: Joi.string().required(),
-      zipCode: Joi.string().required(),
-      country: Joi.string().required(),
-    }),
+      }),
+      Joi.array().items(
+        Joi.object().keys({
+          street: Joi.string().required(),
+          city: Joi.string().required(),
+          state: Joi.string().required(),
+          zipCode: Joi.string().required(),
+          country: Joi.string().required(),
+        })
+      )
+    ).required(),
+    billingAddress: Joi.alternatives().try(
+      Joi.object().keys({
+        street: Joi.string().required(),
+        city: Joi.string().required(),
+        state: Joi.string().required(),
+        zipCode: Joi.string().required(),
+        country: Joi.string().required(),
+      }),
+      Joi.array().items(
+        Joi.object().keys({
+          street: Joi.string().required(),
+          city: Joi.string().required(),
+          state: Joi.string().required(),
+          zipCode: Joi.string().required(),
+          country: Joi.string().required(),
+        })
+      )
+    ),
     paymentMethod: Joi.string()
       .valid('credit_card', 'debit_card', 'paypal', 'stripe', 'cash_on_delivery')
       .required(),

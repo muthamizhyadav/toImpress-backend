@@ -19,6 +19,7 @@ const createOrder = async (req) => {
 
   // Validate products and calculate totals
   const validatedItems = [];
+  let totalAmount = 0;
   for (const item of items) {
     const product = await Product.findById(item.product);
     if (!product) {
@@ -30,22 +31,36 @@ const createOrder = async (req) => {
       throw new ApiError(httpStatus.BAD_REQUEST, `Insufficient stock for product ${product.productTitle}`);
     }
 
+    const price = product.salePrice || product.price;
+    const subtotal = price * item.quantity;
+    totalAmount += subtotal;
+
     validatedItems.push({
       product: item.product,
       productTitle: product.productTitle,
-      price: product.salePrice || product.price,
+      price,
       quantity: item.quantity,
       selectedColor: item.selectedColor,
       selectedSize: item.selectedSize,
-      subtotal: (product.salePrice || product.price) * item.quantity,
+      subtotal,
     });
   }
 
+  totalAmount += (shippingCost || 0) + (tax || 0) - (discount || 0);
+
+  // Handle shippingAddress and billingAddress if they are arrays
+  const shipAddr = Array.isArray(shippingAddress) ? shippingAddress[0] : shippingAddress;
+  const billAddr = billingAddress ? (Array.isArray(billingAddress) ? billingAddress[0] : billingAddress) : shipAddr;
+
+  const orderNumber = `ORD${Date.now()}`;
+
   const orderData = {
+    orderNumber,
     user: userId,
     items: validatedItems,
-    shippingAddress,
-    billingAddress: billingAddress || shippingAddress,
+    totalAmount,
+    shippingAddress: shipAddr,
+    billingAddress: billAddr,
     paymentMethod,
     notes,
     shippingCost: shippingCost || 0,

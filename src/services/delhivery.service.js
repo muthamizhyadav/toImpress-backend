@@ -6,24 +6,21 @@ const httpStatus = require('http-status');
 
 
 const DELHIVERY_API_KEY = process.env.DELHIVERY_API_KEY;
-const DELHIVERY_BASE_URL = 'https://track.delhivery.com'; // Changed to production URL
+const DELHIVERY_BASE_URL = 'https://track.delhivery.com';
 
 const createShipment = async (shipmentData, userId) => {
     if (!userId) {
         throw new ApiError(httpStatus.UNAUTHORIZED, 'User ID is required to create a shipment');
     }
   try {
-    // Validate that shipmentData is an object
     if (!shipmentData || typeof shipmentData !== 'object') {
       throw new Error('Invalid shipment data: must be an object');
     }
 
-    // Ensure shipments array exists
     if (!shipmentData.shipments || !Array.isArray(shipmentData.shipments)) {
       throw new Error('Invalid shipment data: shipments must be an array');
     }
 
-    // Format payload according to Delhivery API requirements
     const formattedShipments = shipmentData.shipments.map((shipment, index) => {
       if (!shipment || typeof shipment !== 'object') {
         throw new Error(`Invalid shipment at index ${index}: must be an object`);
@@ -31,7 +28,6 @@ const createShipment = async (shipmentData, userId) => {
 
       return {
         ...shipment,
-        // Ensure all required fields are present with proper format
         name: shipment.name || 'Customer Name',
         add: shipment.add || 'Customer Address',
         pin: shipment.pin || '123456',
@@ -62,15 +58,11 @@ const createShipment = async (shipmentData, userId) => {
         seller_tin: shipment.seller_tin || '',
         invoice_no: shipment.invoice_no || `INV${Date.now()}`,
         invoice_date: shipment.invoice_date || new Date().toISOString().split('T')[0]
-        // Try without shipment_type first - let Delhivery use default
-        // Remove MPS specific fields to test standard shipment
       };
     });
 
-    // Use production API (confirmed working)
     const apiUrl = `${DELHIVERY_BASE_URL}/api/cmu/create.json`;
     
-    // Create the final payload - use your registered warehouse details
     const updatedData = {
       format: 'json',
       data: JSON.stringify({
