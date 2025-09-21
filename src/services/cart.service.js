@@ -42,12 +42,8 @@ const addToCart = async (userId, productData) => {
   } else {
     if (cart.product && cart.product.toString() === productId) {
       if (quantity === 0) {
-        cart.product = null;
-        cart.itemqty = 0;
-        cart.selectedSize = null;
-        cart.price = 0;
-        cart.subtotal = 0;
-        cart.image = '';
+        await cart.deleteOne();
+        return null;
       } else {
         cart.itemqty = quantity;
         cart.selectedSize = selectedSize || cart.selectedSize;
@@ -63,12 +59,8 @@ const addToCart = async (userId, productData) => {
         cart.subtotal = subtotal;
         cart.image = product.images?.[0] || '';
       } else {
-        cart.product = null;
-        cart.itemqty = 0;
-        cart.selectedSize = null;
-        cart.price = 0;
-        cart.subtotal = 0;
-        cart.image = '';
+        await cart.deleteOne();
+        return null;
       }
     }
 
@@ -92,14 +84,8 @@ const updateCart = async (userId, updateData) => {
 
   // If quantity is 0, remove the product from cart
   if (quantity === 0) {
-    cart.product = null;
-    cart.itemqty = 0;
-    cart.selectedSize = null;
-    cart.price = 0;
-    cart.subtotal = 0;
-    cart.image = '';
-    await cart.save();
-    return cart.product ? await cart.populate('product') : cart;
+    await cart.deleteOne();
+    return null;
   }
 
   const product = await Product.findById(cart.product);
@@ -128,15 +114,9 @@ const removeFromCart = async (userId) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
-  cart.product = null;
-  cart.itemqty = 0;
-  cart.selectedSize = null;
-  cart.price = 0;
-  cart.subtotal = 0;
-  cart.image = '';
-  await cart.save();
+  await cart.deleteOne();
 
-  return cart;
+  return null;
 };
 
 const clearCart = async (userId) => {
@@ -145,16 +125,9 @@ const clearCart = async (userId) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
-  cart.product = null;
-  cart.itemqty = 0;
-  cart.selectedSize = null;
-  cart.price = 0;
-  cart.subtotal = 0;
-  cart.image = '';
-  cart.totalAmount = 0;
-  await cart.save();
+  await cart.deleteOne();
 
-  return cart;
+  return null;
 };
 
 const getCart = async (userId) => {
