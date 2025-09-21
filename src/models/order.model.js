@@ -5,7 +5,6 @@ const { toJSON, paginate } = require('./plugins');
 const orderItemSchema = mongoose.Schema({
   product: {
     type: String,
-    ref: 'Product',
     required: true,
   },
   productTitle: {
@@ -89,12 +88,10 @@ const orderSchema = mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'failed', 'refunded'],
       default: 'pending',
     },
     paymentMethod: {
       type: String,
-      enum: ['credit_card', 'debit_card', 'paypal', 'stripe', 'cash_on_delivery'],
     },
     shippingAddress: {
       type: shippingAddressSchema,
