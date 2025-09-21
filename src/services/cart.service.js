@@ -1,6 +1,7 @@
 const httpStatus = require('http-status');
 const { Cart, Product } = require('../models');
 const ApiError = require('../utils/ApiError');
+const { log } = require('../config/logger');
 
 const getCartByUserId = async (userId) => {
   let cart = await Cart.findOne({ user: userId }).populate('product');
@@ -218,8 +219,32 @@ const getCart = async (userId) => {
   ]);
 
   let couponsProduct = cart.filter((item) => item.isOfferAvailable);
-  
-  return { data: cart, couponsProduct };
+
+  let totalSalesPrice = couponsProduct?.length ? couponsProduct.reduce((acc, item) => {
+    const price = Number(item.salePrice) || 0;
+    return acc + price;
+  }, 0) : 0;
+
+  let couponAmount = couponsProduct?.length ? couponsProduct[0].couponDiscount : 0
+  let type = couponsProduct?.length ? couponsProduct[0].couponType : null
+  let discountvalue = couponsProduct?.length ? couponsProduct[0].couponOfferDiscount : null
+
+  let isDiscountApplicable = totalSalesPrice >= couponAmount;
+  let discountedAmount = 0;
+  let minusValue = 0;
+
+  if (type === 'percentage' && totalSalesPrice >= couponAmount ) {
+    const discountPercent = parseFloat(discountvalue) / 100;
+    const calculatedDiscount = totalSalesPrice * discountPercent;
+    const discount = Math.min(calculatedDiscount, couponAmount);
+    discountedAmount = totalSalesPrice - discount;
+    minusValue = discount;
+  } else if (couponAmount > 0 && totalSalesPrice > couponAmount) {
+    discountedAmount = totalSalesPrice - couponAmount;
+    minusValue = couponAmount;
+  }
+
+  return { data: cart, couponsProduct, totalSalesPrice, couponAmount, type, discountvalue, isDiscountApplicable, discountedAmount, minusValue };
 };
 
 module.exports = {
