@@ -154,13 +154,10 @@ const getCart = async (userId) => {
           {
             $match: {
               $expr: {
-                $and: [
-                  { $in: ['$$productId', '$products'] },
-                  { $eq: ['$isActive', true] }
-                ]
-              }
-            }
-          }
+                $and: [{ $in: ['$$productId', '$products'] }, { $eq: ['$isActive', true] }],
+              },
+            },
+          },
         ],
         as: 'availableCoupons',
       },
@@ -180,25 +177,22 @@ const getCart = async (userId) => {
         image: 1,
         product: 1,
         couponDiscount: {
-          $ifNull: ['$availableCoupons.discount', null]
+          $ifNull: ['$availableCoupons.discount', null],
         },
         couponOfferDiscount: {
-          $ifNull: ['$availableCoupons.offerDiscount', null]
+          $ifNull: ['$availableCoupons.offerDiscount', null],
         },
         couponType: {
-          $ifNull: ['$availableCoupons.type', null]
+          $ifNull: ['$availableCoupons.type', null],
         },
         isOfferAvailable: {
           $cond: {
             if: {
-              $and: [
-                { $ne: ['$availableCoupons', null] },
-                { $ne: [ { $ifNull: ['$availableCoupons.type', null] }, null ] }
-              ]
+              $and: [{ $ne: ['$availableCoupons', null] }, { $ne: [{ $ifNull: ['$availableCoupons.type', null] }, null] }],
             },
             then: true,
-            else: false
-          }
+            else: false,
+          },
         },
         discountPercentage: {
           $cond: [
@@ -208,10 +202,7 @@ const getCart = async (userId) => {
                 {
                   $divide: [
                     {
-                      $subtract: [
-                        '$productDetails.price',
-                        '$productDetails.salePrice',
-                      ],
+                      $subtract: ['$productDetails.price', '$productDetails.salePrice'],
                     },
                     '$productDetails.price',
                   ],
@@ -226,7 +217,9 @@ const getCart = async (userId) => {
     },
   ]);
 
-  return cart;
+  let couponsProduct = cart.filter((item) => item.isOfferAvailable);
+  
+  return { data: cart, couponsProduct };
 };
 
 module.exports = {
