@@ -94,16 +94,12 @@ const createShipment = async (shipmentData, userId) => {
       }
     );
 
-    console.log('✅ Delhivery Production Response:', JSON.stringify(response.data, null, 2));
 
     if (response.data.success) {
-      console.log('🎉 Shipment created successfully!');
-      if (response.data.packages && response.data.packages.length > 0) {
-        console.log('📋 Waybill(s):', response.data.packages.map(pkg => pkg.waybill).join(', '));
-        
-        const ordersToInsert = response.data.packages.map(pkg => ({
+      if (response.data.packages && response.data.packages.length > 0) {        
+        const ordersToInsert = response.data.packages.map((pkg, index) => ({
           waybill: pkg.waybill,
-          orderId: shipmentData.orderId || '',
+          orderId: shipmentData.shipments[index]?.orderId || `ORDER${Date.now()}`,
           refnum: pkg.refnum || '',
           status: pkg.status || response.data.status || '',
           client: pkg.client || '',
@@ -115,13 +111,13 @@ const createShipment = async (shipmentData, userId) => {
           serviceable: pkg.serviceable || false,
           shipmentPayload: shipmentData,
           responsePayload: pkg,
-          productId: shipmentData.productId || null,
           userId: userId || null,
         }));
         try {
           await DelhiveryOrder.insertMany(ordersToInsert);
         } catch (err) {
           console.error('❌ Error saving DelhiveryOrders:', err.message);
+          throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Failed to save shipment data to database');
         }
       }
     }
