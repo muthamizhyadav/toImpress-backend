@@ -43,7 +43,7 @@ const createOrder = async (req) => {
       selectedColor: item.selectedColor,
       selectedSize: item.selectedSize,
       subtotal,
-      productUrl:item.productUrl
+      productUrl: item.productUrl,
     });
   }
 
@@ -73,11 +73,7 @@ const createOrder = async (req) => {
 
   // Update product stock quantities
   for (const item of items) {
-    await Product.findByIdAndUpdate(
-      item.product,
-      { $inc: { stockQuantity: -item.quantity } },
-      { new: true }
-    );
+    await Product.findByIdAndUpdate(item.product, { $inc: { stockQuantity: -item.quantity } }, { new: true });
   }
 
   return await Order.findById(order._id).populate('user', 'name email').populate('items.product');
@@ -150,10 +146,8 @@ const queryOrders = async (req) => {
  */
 const getOrderById = async (req) => {
   const { id } = req.params;
-  const order = await Order.findById(id)
-    .populate('user', 'name email')
-    .populate('items.product');
-  
+  const order = await Order.findById(id).populate('user', 'name email').populate('items.product');
+
   if (!order) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   }
@@ -177,7 +171,7 @@ const updateOrderById = async (req) => {
   const updateBody = req.body;
 
   const order = await getOrderById(req);
-  
+
   // Validate status transitions
   const validTransitions = {
     pending: ['confirmed', 'cancelled'],
@@ -199,10 +193,8 @@ const updateOrderById = async (req) => {
 
   Object.assign(order, updateBody);
   await order.save();
-  
-  return await Order.findById(order._id)
-    .populate('user', 'name email')
-    .populate('items.product');
+
+  return await Order.findById(order._id).populate('user', 'name email').populate('items.product');
 };
 
 /**
@@ -213,7 +205,7 @@ const updateOrderById = async (req) => {
 const deleteOrderById = async (req) => {
   const { id } = req.params;
   const order = await getOrderById(req);
-  
+
   // Only allow deletion of pending or cancelled orders
   if (!['pending', 'cancelled'].includes(order.status)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Only pending or cancelled orders can be deleted');
@@ -221,11 +213,7 @@ const deleteOrderById = async (req) => {
 
   // Restore product stock quantities
   for (const item of order.items) {
-    await Product.findByIdAndUpdate(
-      item.product,
-      { $inc: { stockQuantity: item.quantity } },
-      { new: true }
-    );
+    await Product.findByIdAndUpdate(item.product, { $inc: { stockQuantity: item.quantity } }, { new: true });
   }
 
   await Order.findByIdAndDelete(id);
@@ -249,11 +237,22 @@ const getUserOrders = async (req) => {
     filter.status = req.query.status;
   }
 
-  const orders = await Order.find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit)
-    .populate('items.product');
+  const orders = await Order.aggregate([
+    {
+      $lookup: {
+        from: 'delhiveryorders',
+        localField: '_id',
+        foreignField: 'orderId',
+        as: 'delhiveryDetails',
+      },
+    },
+    {
+      $unwind: { path: '$delhiveryDetails', preserveNullAndEmptyArrays: true },
+    },
+    { $sort: sort },
+    { $skip: skip },
+    { $limit: limit },
+  ]);
 
   const total = await Order.countDocuments(filter);
   const totalPages = Math.ceil(total / limit);
