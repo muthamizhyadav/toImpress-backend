@@ -43,6 +43,7 @@ const createOrder = async (req) => {
       selectedColor: item.selectedColor,
       selectedSize: item.selectedSize,
       subtotal,
+      productUrl:item.productUrl
     });
   }
 
