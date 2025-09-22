@@ -219,20 +219,23 @@ const getCart = async (userId) => {
   ]);
 
   let couponsProduct = cart.filter((item) => item.isOfferAvailable);
+  let allProduct = cart.length > 0? cart.reduce((sum, item) => sum + (item.salePrice * item.itemqty), 0):0;
 
-  let totalSalesPrice = couponsProduct?.length ? couponsProduct.reduce((acc, item) => {
+  let totalSalesPrice = couponsProduct.length > 0 ? couponsProduct.reduce((acc, item) => {
     const price = Number(item.salePrice * item.itemqty) || 0;
     return acc + price;
   }, 0) : 0;
 
-  let couponAmount = couponsProduct?.length ? couponsProduct[0].couponDiscount : 0
+  let couponAmount = couponsProduct.length > 0 ? couponsProduct[0].couponDiscount : 0
   let type = couponsProduct?.length ? couponsProduct[0].couponType : null
   let discountvalue = couponsProduct?.length ? couponsProduct[0].couponOfferDiscount : null
 
-  let isDiscountApplicable = totalSalesPrice >= couponAmount;
+  let isDiscountApplicable = couponsProduct.length >0 ? totalSalesPrice >= couponAmount:false;
   let discountedAmount = 0;
   let minusValue = 0;
 
+
+  if(isDiscountApplicable){
   if (type === 'percentage' && totalSalesPrice >= couponAmount ) {
     const discountPercent = parseFloat(discountvalue) / 100;
     const calculatedDiscount = totalSalesPrice * discountPercent;
@@ -242,6 +245,9 @@ const getCart = async (userId) => {
   } else if (couponAmount > 0 && totalSalesPrice > couponAmount) {
     discountedAmount = totalSalesPrice - couponAmount;
     minusValue = couponAmount;
+  }
+  } else {
+    discountedAmount = allProduct
   }
 
   return { data: cart, couponsProduct, totalSalesPrice, couponAmount, type, discountvalue, isDiscountApplicable, finalAmount:discountedAmount, minusValue };
