@@ -6,7 +6,6 @@ const couponSchema = new mongoose.Schema(
     _id: {
       type: String,
       default: require('uuid').v4,
-      unique: true,
     },
     code: {
       type: String,

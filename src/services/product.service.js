@@ -12,6 +12,15 @@ const uploadMultipleFiles = async (req) => {
   }
 };
 
+const getProductsByCategory = async (req) => {
+  const categoryName = req.params.categoryName;
+  const category = await Product.find({ category: categoryName });
+  if (!category) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
+  }
+  return category;
+}
+
 const createProduct = async (req) => {
   const body = req.body;
   const creation = await Product.create(body);
@@ -168,30 +177,26 @@ const productsByCategories = async (req) => {
   };
 };
 
-const getProductsByCategory = async (req) => {
-  const categoryName = req.params.categoryName || req.query.category;
+const getProductsByCategoryId = async (req) => {
+  const categoryId = req.params.id;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  if (!categoryName) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Category name is required');
-  }
+  const products = await Product.find({ category: categoryId, active: true })
+    .skip(skip)
+    .limit(limit)
+    .populate('category');
 
-  const products = await Product.find({ category: categoryName }).skip(skip).limit(limit);
-  const total = await Product.countDocuments({ category: categoryName });
-  const totalPages = Math.ceil(total / limit);
+  const total = await Product.countDocuments({ category: categoryId, active: true });
 
   return {
-    success: true,
-    data: products,
+    products,
     pagination: {
+      page,
+      limit,
       total,
-      totalPages,
-      currentPage: page,
-      itemsPerPage: limit,
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
+      pages: Math.ceil(total / limit),
     },
   };
 };
@@ -230,5 +235,6 @@ module.exports = {
   productsByCategories,
   getProductByIdAndSimilerProducts,
   deleteProductById,
-  getProductsByCategory,
+  getProductsByCategoryId,
+  getProductsByCategory
 };

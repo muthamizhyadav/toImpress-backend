@@ -15,8 +15,8 @@ router.route('/:id')
 	.delete(productController.deleteProductById);
 router.route('/products/by/categories/:id').get(auth(), productController.productsByCategories);
 router.route('/products/category/:categoryName').get(productController.getProductsByCategory);
+router.route('/by-category/:categoryId').get(productController.getProductsByCategoryId);
 router.route('/product/detail/:id').get(productController.getProductByIdAndSimilerProducts);
-
 
 
 
