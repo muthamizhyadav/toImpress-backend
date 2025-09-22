@@ -30,6 +30,7 @@ const orderItemSchema = mongoose.Schema({
     type: Number,
     required: true,
   },
+  productUrl:String,
 });
 
 const shippingAddressSchema = mongoose.Schema({
