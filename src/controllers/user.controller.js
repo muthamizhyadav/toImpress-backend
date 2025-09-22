@@ -42,7 +42,6 @@ const verifyOtp = catchAsync(async (req, res) => {
 });
 
 const createUser = catchAsync(async (req, res) => {
-  // Only mobile required for Flipkart-style OTP login
   const { mobile, name } = req.body;
   if (!mobile) throw new ApiError(httpStatus.BAD_REQUEST, 'Mobile number required');
   let user = await User.findOne({ mobile });
@@ -60,7 +59,6 @@ const addUserAddress = catchAsync(async (req, res) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Address is required');
   }
 
-  // Check if the user exists and update or create the address
   const user = await userService.addOrUpdateUserAddress(userId, address);
 
   res.status(httpStatus.OK).send(user);
