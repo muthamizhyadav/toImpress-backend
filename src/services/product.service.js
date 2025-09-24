@@ -14,11 +14,21 @@ const uploadMultipleFiles = async (req) => {
 
 const getProductsByCategory = async (req) => {
   const categoryName = req.params.categoryName;
-  const category = await Product.find({ category: categoryName });
-  if (!category) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+  const filter = { category: categoryName };
+  const products = await Product.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 });
+  const total = await Product.countDocuments(filter);
+  if (!products || products.length === 0) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Category not found or no products');
   }
-  return category;
+  const hasNextPage = skip + products.length < total;
+  return {
+    data: products,
+    page,
+    nextPage: hasNextPage,
+  };
 };
 
 const createProduct = async (req) => {
