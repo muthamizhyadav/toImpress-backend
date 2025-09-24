@@ -7,12 +7,12 @@ const addToCart = catchAsync(async (req, res) => {
   const cartData = req.body;
   const { productId, quantity = 1, selectedSize } = cartData;
 
-  // Get cart before the operation to compare
   const cartBefore = await cartService.getCart(userId);
-  let existingItem = cartBefore?.product?.toString() === productId;
-
+  // cartService.getCart returns an object with `data` (array of items)
+  const existingItem = Array.isArray(cartBefore?.data)
+    ? cartBefore.data.some((it) => it.product && it.product.toString() === productId)
+    : false;
   const cart = await cartService.addToCart(userId, cartData);
-
   let message = 'Item added to cart successfully';
 
   if (existingItem) {
