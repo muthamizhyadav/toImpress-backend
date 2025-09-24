@@ -54,6 +54,11 @@ const getProductsByCategoryId = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(data);
 });
 
+const getProductSearch = catchAsync(async (req, res) => {
+  const data = await ProductService.getProductSearch(req);
+  res.status(httpStatus.OK).send(data);
+});
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
@@ -64,5 +69,6 @@ module.exports = {
   getProductByIdAndSimilerProducts,
   deleteProductById,
   getProductsByCategory,
-  getProductsByCategoryId
+  getProductsByCategoryId,
+  getProductSearch
 };

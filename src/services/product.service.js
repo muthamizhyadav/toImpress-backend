@@ -19,7 +19,7 @@ const getProductsByCategory = async (req) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Category not found');
   }
   return category;
-}
+};
 
 const createProduct = async (req) => {
   const body = req.body;
@@ -31,7 +31,7 @@ const getProducts = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const productSearchQuery = req.query.searchkey || '';
-  let productSearch = {_id:{$ne:null}}; 
+  let productSearch = { _id: { $ne: null } };
   if (productSearchQuery) {
     productSearch = {
       productTitle: { $regex: productSearchQuery, $options: 'i' },
@@ -93,7 +93,7 @@ const productsByCategories = async (req) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  
+
   let name;
   switch (id) {
     case 1:
@@ -127,9 +127,7 @@ const productsByCategories = async (req) => {
     { $limit: limit },
   ]);
 
-  const totalCountAgg = await Product.aggregate([
-    { $match: { category: name } },
-  ]);
+  const totalCountAgg = await Product.aggregate([{ $match: { category: name } }]);
 
   const totalCount = totalCountAgg.length > 0 ? totalCountAgg[0].total : 0;
 
@@ -147,10 +145,7 @@ const getProductsByCategoryId = async (req) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  const products = await Product.find({ category: categoryId, active: true })
-    .skip(skip)
-    .limit(limit)
-    .populate('category');
+  const products = await Product.find({ category: categoryId, active: true }).skip(skip).limit(limit).populate('category');
 
   const total = await Product.countDocuments({ category: categoryId, active: true });
 
@@ -190,6 +185,17 @@ const deleteProductById = async (id) => {
   return { success: true, message: 'Product deleted successfully' };
 };
 
+const getProductSearch = async (req) => {
+  const searchKey = req.query.searchkey || '';
+  if (!searchKey) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Search key is required');
+  }
+  const products = await Product.find({
+    productTitle: { $regex: searchKey, $options: 'i' },
+  });
+  return products;
+};
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
@@ -200,5 +206,6 @@ module.exports = {
   getProductByIdAndSimilerProducts,
   deleteProductById,
   getProductsByCategoryId,
-  getProductsByCategory
+  getProductsByCategory,
+  getProductSearch,
 };

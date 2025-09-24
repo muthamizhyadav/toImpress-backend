@@ -18,7 +18,7 @@ const createCategory = async (req) => {
 };
 
 const fetchAllCategory = async (req) => {
-  const findAllCategory = await Category.find({ active: true });
+  const findAllCategory = await Category.find({ active: true }).sort({ order: 1 });
   return findAllCategory;
 };
 
