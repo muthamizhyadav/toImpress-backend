@@ -9,7 +9,6 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Product-specific review routes
 router
   .route('/product/:productId')
   .post(auth(), validate(reviewValidation.createReview), reviewController.createReview)

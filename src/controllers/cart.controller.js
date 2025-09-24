@@ -8,12 +8,10 @@ const addToCart = catchAsync(async (req, res) => {
   const { productId, quantity = 1, selectedSize } = cartData;
 
   const cartBefore = await cartService.getCart(userId);
-  // cartService.getCart returns an object with `data` (array of items)
   const existingItem = Array.isArray(cartBefore?.data)
     ? cartBefore.data.some((it) => {
         if (!it.product) return false;
         const sameProduct = it.product.toString() === productId;
-        // If controller passed a selectedSize, check size match; otherwise treat undefined/empty as match
         if (selectedSize) {
           return sameProduct && it.selectedSize === selectedSize;
         }

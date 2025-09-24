@@ -18,7 +18,7 @@ router.route('/products/by/categories/:id').get(productController.productsByCate
 router.route('/products/category/:categoryName').get(productController.getProductsByCategory);
 router.route('/by-category/:categoryId').get(productController.getProductsByCategoryId);
 router.route('/product/detail/:id').get(productController.getProductByIdAndSimilerProducts);
-router.route('/search').get(productController.getProductSearch);
+router.route('/global/search').get(productController.getProductSearch);
 
 
 

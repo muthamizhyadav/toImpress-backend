@@ -25,7 +25,6 @@ const createReview = async (req) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'You have already reviewed this product');
   }
 
-  // Check if user has purchased this product (verified purchase)
   const hasPurchased = await Order.findOne({
     user: userId,
     'items.product': productId,
@@ -36,17 +35,12 @@ const createReview = async (req) => {
     user: userId,
     product: productId,
     rating,
-    title,
     comment,
-    images: images || [],
-    isVerifiedPurchase: !!hasPurchased,
-    status: 'approved', // Auto-approve for now, can be changed to 'pending' for moderation
+    status: 'approved',
   };
 
   const review = await Review.create(reviewData);
-  return await Review.findById(review._id)
-    .populate('user', 'name')
-    .populate('product', 'productTitle images');
+  return review
 };
 
 /**
