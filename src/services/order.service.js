@@ -239,6 +239,9 @@ const getUserOrders = async (req) => {
 
   const orders = await Order.aggregate([
     {
+      $match:{user: userId}
+    },
+    {
       $lookup: {
         from: 'delhiveryorders',
         localField: '_id',
