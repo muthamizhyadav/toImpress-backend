@@ -107,7 +107,10 @@ const updateCart = async (userId, updateData) => {
     // If no productId provided and user has multiple cart items, require identifier
     const count = await Cart.countDocuments({ user: userId });
     if (count > 1) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Multiple cart items found. Provide productId and selectedSize to update a specific item');
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        'Multiple cart items found. Provide productId and selectedSize to update a specific item'
+      );
     }
     cart = await Cart.findOne({ user: userId });
   }
@@ -164,7 +167,10 @@ const removeFromCart = async (userId, data = {}) => {
   // If no productId provided and multiple items exist, ask for identifier
   const count = await Cart.countDocuments({ user: userId });
   if (count > 1) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Multiple cart items found. Provide productId and selectedSize to remove a specific item');
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      'Multiple cart items found. Provide productId and selectedSize to remove a specific item'
+    );
   }
 
   const cart = await Cart.findOne({ user: userId });
@@ -275,45 +281,61 @@ const getCart = async (userId) => {
   ]);
 
   let couponsProduct = cart.filter((item) => item.isOfferAvailable);
-  let allProduct = cart.length > 0? cart.reduce((sum, item) => sum + (item.salePrice * item.itemqty), 0):0;
+  let allProduct = cart.length > 0 ? cart.reduce((sum, item) => sum + item.salePrice * item.itemqty, 0) : 0;
 
-  let totalSalesPrice = couponsProduct.length > 0 ? couponsProduct.reduce((acc, item) => {
-    const price = Number(item.salePrice * item.itemqty) || 0;
-    return acc + price;
-  }, 0) : 0;
+  let totalSalesPrice =
+    couponsProduct.length > 0
+      ? couponsProduct.reduce((acc, item) => {
+          const price = Number(item.salePrice * item.itemqty) || 0;
+          return acc + price;
+        }, 0)
+      : 0;
 
-  let totalPrice = cart.length > 0 ? cart.reduce((acc, item) => {
-    const price = Number(item.salePrice * item.itemqty) || 0;
-    return acc + price;
-  }, 0) : 0;
+  let totalPrice =
+    cart.length > 0
+      ? cart.reduce((acc, item) => {
+          const price = Number(item.salePrice * item.itemqty) || 0;
+          return acc + price;
+        }, 0)
+      : 0;
 
-  let couponAmount = couponsProduct.length > 0 ? couponsProduct[0].couponDiscount : 0
-  let type = couponsProduct?.length ? couponsProduct[0].couponType : null
-  let discountvalue = couponsProduct?.length ? couponsProduct[0].couponOfferDiscount : null
+  let couponAmount = couponsProduct.length > 0 ? couponsProduct[0].couponDiscount : 0;
+  let type = couponsProduct?.length ? couponsProduct[0].couponType : null;
+  let discountvalue = couponsProduct?.length ? couponsProduct[0].couponOfferDiscount : null;
 
-  let isDiscountApplicable = couponsProduct.length >0 ? totalSalesPrice >= couponAmount:false;
+  let isDiscountApplicable = couponsProduct.length > 0 ? totalSalesPrice >= couponAmount : false;
   let discountedAmount = 0;
   let minusValue = 0;
 
-
-  if(isDiscountApplicable){
-  if (type === 'percentage' && totalSalesPrice >= couponAmount ) {
-    const discountPercent = parseFloat(discountvalue) / 100;
-    const calculatedDiscount = totalSalesPrice * discountPercent;
-    const discount = Math.min(calculatedDiscount, couponAmount);
-    discountedAmount = totalPrice - discount;
-    minusValue = discount;
-  } else if (couponAmount > 0 && totalSalesPrice > couponAmount) {
-    discountedAmount = totalPrice - couponAmount;
-    minusValue = couponAmount;
-  }
+  if (isDiscountApplicable) {
+    if (type === 'percentage' && totalSalesPrice >= couponAmount) {
+      const discountPercent = parseFloat(discountvalue) / 100;
+      const calculatedDiscount = totalSalesPrice * discountPercent;
+      const discount = Math.min(calculatedDiscount, couponAmount);
+      discountedAmount = totalPrice - discount;
+      minusValue = discount;
+    } else if (couponAmount > 0 && totalSalesPrice > couponAmount) {
+      discountedAmount = totalPrice - couponAmount;
+      minusValue = couponAmount;
+    }
   } else {
-    discountedAmount = allProduct
+    discountedAmount = allProduct;
   }
+  const totalAmt = Math.round(discountedAmount);
+  const gst = Math.round(parseFloat((totalAmt * 0.05).toFixed(2)));
 
-  const totalAmt = parseInt(discountedAmount.toFixed(0))
-
-  return { data: cart, couponsProduct, totalSalesPrice:totalPrice, couponAmount, type, discountvalue, isDiscountApplicable, finalAmount:totalAmt, minusValue };
+  return {
+    data: cart,
+    couponsProduct,
+    totalSalesPrice: totalPrice,
+    couponAmount,
+    type,
+    discountvalue,
+    isDiscountApplicable,
+    finalAmount: totalAmt+gst,
+    minusValue,
+    gst: gst,
+  };
 };
 
 module.exports = {
