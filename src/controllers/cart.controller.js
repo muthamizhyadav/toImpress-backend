@@ -10,7 +10,15 @@ const addToCart = catchAsync(async (req, res) => {
   const cartBefore = await cartService.getCart(userId);
   // cartService.getCart returns an object with `data` (array of items)
   const existingItem = Array.isArray(cartBefore?.data)
-    ? cartBefore.data.some((it) => it.product && it.product.toString() === productId)
+    ? cartBefore.data.some((it) => {
+        if (!it.product) return false;
+        const sameProduct = it.product.toString() === productId;
+        // If controller passed a selectedSize, check size match; otherwise treat undefined/empty as match
+        if (selectedSize) {
+          return sameProduct && it.selectedSize === selectedSize;
+        }
+        return sameProduct;
+      })
     : false;
   const cart = await cartService.addToCart(userId, cartData);
   let message = 'Item added to cart successfully';
@@ -55,7 +63,9 @@ const updateCart = catchAsync(async (req, res) => {
 
 const removeFromCart = catchAsync(async (req, res) => {
   const userId = req.user.id;
-  const cart = await cartService.removeFromCart(userId);
+  // allow passing productId/selectedSize in body to remove a specific item
+  const { productId, selectedSize } = req.body || {};
+  const cart = await cartService.removeFromCart(userId, { productId, selectedSize });
   res.status(httpStatus.OK).send({
     success: true,
     message: 'Item removed from cart successfully',

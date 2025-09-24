@@ -19,8 +19,16 @@ const addToCart = async (userId, productData) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  // If there's an existing cart entry for this user and product, we'll increment quantity
-  let cart = await Cart.findOne({ user: userId, product: productId });
+  // If there's an existing cart entry for this user, product and size, we'll increment quantity
+  const query = { user: userId, product: productId };
+  if (typeof selectedSize !== 'undefined' && selectedSize !== null) {
+    query.selectedSize = selectedSize;
+  } else {
+    // match documents where selectedSize is not set / empty
+    query.$or = [{ selectedSize: { $exists: false } }, { selectedSize: null }, { selectedSize: '' }];
+  }
+
+  let cart = await Cart.findOne(query);
 
   if (!cart) {
     // Validate stock for new cart entry
@@ -87,11 +95,33 @@ const addToCart = async (userId, productData) => {
 };
 
 const updateCart = async (userId, updateData) => {
-  const { quantity, selectedSize } = updateData;
+  const { quantity, selectedSize, productId } = updateData;
 
-  const cart = await Cart.findOne({ user: userId });
+  // Build query to find the correct cart item. Prefer explicit productId+size when provided.
+  const buildQuery = () => {
+    if (productId) {
+      const q = { user: userId, product: productId };
+      if (typeof selectedSize !== 'undefined' && selectedSize !== null) q.selectedSize = selectedSize;
+      else q.$or = [{ selectedSize: { $exists: false } }, { selectedSize: null }, { selectedSize: '' }];
+      return q;
+    }
+    return { user: userId };
+  };
+
+  let cart;
+  if (productId) {
+    cart = await Cart.findOne(buildQuery());
+  } else {
+    // If no productId provided and user has multiple cart items, require identifier
+    const count = await Cart.countDocuments({ user: userId });
+    if (count > 1) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Multiple cart items found. Provide productId and selectedSize to update a specific item');
+    }
+    cart = await Cart.findOne({ user: userId });
+  }
+
   if (!cart) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Cart not found');
+    throw new ApiError(httpStatus.NOT_FOUND, 'Cart item not found');
   }
 
   if (!cart.product) {
@@ -124,14 +154,33 @@ const updateCart = async (userId, updateData) => {
   return cart.product ? await cart.populate('product') : cart;
 };
 
-const removeFromCart = async (userId) => {
+const removeFromCart = async (userId, data = {}) => {
+  const { productId, selectedSize } = data;
+
+  // If productId provided, delete that specific item (size-aware)
+  if (productId) {
+    const query = { user: userId, product: productId };
+    if (typeof selectedSize !== 'undefined' && selectedSize !== null) query.selectedSize = selectedSize;
+    else query.$or = [{ selectedSize: { $exists: false } }, { selectedSize: null }, { selectedSize: '' }];
+
+    const cart = await Cart.findOne(query);
+    if (!cart) throw new ApiError(httpStatus.NOT_FOUND, 'Cart item not found');
+    await cart.deleteOne();
+    return null;
+  }
+
+  // If no productId provided and multiple items exist, ask for identifier
+  const count = await Cart.countDocuments({ user: userId });
+  if (count > 1) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Multiple cart items found. Provide productId and selectedSize to remove a specific item');
+  }
+
   const cart = await Cart.findOne({ user: userId });
   if (!cart) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Cart not found');
   }
 
   await cart.deleteOne();
-
   return null;
 };
 
