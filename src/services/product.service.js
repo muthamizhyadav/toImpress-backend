@@ -202,7 +202,7 @@ const getProductSearch = async (req) => {
   }
   const products = await Product.find({
     productTitle: { $regex: searchKey, $options: 'i' },
-  });
+  }).limit(10);
   return products;
 };
 
