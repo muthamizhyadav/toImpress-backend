@@ -282,6 +282,11 @@ const getCart = async (userId) => {
     return acc + price;
   }, 0) : 0;
 
+  let totalPrice = cart.length > 0 ? cart.reduce((acc, item) => {
+    const price = Number(item.salePrice * item.itemqty) || 0;
+    return acc + price;
+  }, 0) : 0;
+
   let couponAmount = couponsProduct.length > 0 ? couponsProduct[0].couponDiscount : 0
   let type = couponsProduct?.length ? couponsProduct[0].couponType : null
   let discountvalue = couponsProduct?.length ? couponsProduct[0].couponOfferDiscount : null
@@ -296,17 +301,19 @@ const getCart = async (userId) => {
     const discountPercent = parseFloat(discountvalue) / 100;
     const calculatedDiscount = totalSalesPrice * discountPercent;
     const discount = Math.min(calculatedDiscount, couponAmount);
-    discountedAmount = totalSalesPrice - discount;
+    discountedAmount = totalPrice - discount;
     minusValue = discount;
   } else if (couponAmount > 0 && totalSalesPrice > couponAmount) {
-    discountedAmount = totalSalesPrice - couponAmount;
+    discountedAmount = totalPrice - couponAmount;
     minusValue = couponAmount;
   }
   } else {
     discountedAmount = allProduct
   }
 
-  return { data: cart, couponsProduct, totalSalesPrice, couponAmount, type, discountvalue, isDiscountApplicable, finalAmount:discountedAmount, minusValue };
+  const totalAmt = parseInt(discountedAmount.toFixed(0))
+
+  return { data: cart, couponsProduct, totalSalesPrice:totalPrice, couponAmount, type, discountvalue, isDiscountApplicable, finalAmount:totalAmt, minusValue };
 };
 
 module.exports = {
