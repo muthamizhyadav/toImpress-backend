@@ -5,7 +5,7 @@ const cartService = require('../services/cart.service');
 const addToCart = catchAsync(async (req, res) => {
   const userId = req.user.id;
   const cartData = req.body;
-  const { productId, quantity = 1, selectedSize } = cartData;
+  const { productId, quantity, selectedSize } = cartData;
 
   const cartBefore = await cartService.getCart(userId);
   const existingItem = Array.isArray(cartBefore?.data)

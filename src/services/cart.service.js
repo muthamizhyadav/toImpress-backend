@@ -12,26 +12,22 @@ const getCartByUserId = async (userId) => {
 };
 
 const addToCart = async (userId, productData) => {
-  const { productId, quantity = 1, selectedSize } = productData;
-
+  const { productId, quantity, selectedSize } = productData;
   const product = await Product.findById(productId);
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
-  // If there's an existing cart entry for this user, product and size, we'll increment quantity
   const query = { user: userId, product: productId };
   if (typeof selectedSize !== 'undefined' && selectedSize !== null) {
     query.selectedSize = selectedSize;
   } else {
-    // match documents where selectedSize is not set / empty
     query.$or = [{ selectedSize: { $exists: false } }, { selectedSize: null }, { selectedSize: '' }];
   }
 
   let cart = await Cart.findOne(query);
 
   if (!cart) {
-    // Validate stock for new cart entry
     if (quantity > 0 && product.stockQuantity < quantity) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock');
     }
@@ -51,26 +47,22 @@ const addToCart = async (userId, productData) => {
       cart = await Cart.create({ user: userId, product: null, itemqty: 0, totalAmount: 0 });
     }
   } else {
-    // Existing cart for same product: add to quantity instead of overwriting
     if (cart.product && cart.product.toString() === productId) {
-      const newQty = (cart.itemqty || 0) + quantity;
+      const newQty = quantity;
 
       if (quantity === 0) {
         await cart.deleteOne();
         return null;
       }
 
-      // Validate stock against cumulative quantity
       if (product.stockQuantity < newQty) {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock for requested quantity');
       }
 
       cart.itemqty = newQty;
-      // Preserve original selectedSize unless user explicitly provides one
       cart.selectedSize = selectedSize || cart.selectedSize;
       cart.subtotal = (product.salePrice || product.price) * cart.itemqty;
     } else {
-      // If cart belongs to the user but for a different product, replace only when quantity > 0
       if (quantity > 0) {
         if (product.stockQuantity < quantity) {
           throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock');
