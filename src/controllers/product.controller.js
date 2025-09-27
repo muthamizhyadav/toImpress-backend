@@ -59,6 +59,15 @@ const getProductSearch = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(data);
 });
 
+const getProductSize = catchAsync(async (req, res) => {
+  const productSize = req.query.size;
+  if (!productSize) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Size query parameter is required');
+  }
+  const data = await ProductService.getProductSize(productSize);
+  res.status(httpStatus.OK).send(data);
+});
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
@@ -70,5 +79,6 @@ module.exports = {
   deleteProductById,
   getProductsByCategory,
   getProductsByCategoryId,
-  getProductSearch
+  getProductSearch,
+  getProductSize
 };

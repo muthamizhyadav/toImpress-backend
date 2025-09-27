@@ -206,6 +206,11 @@ const getProductSearch = async (req) => {
   return products;
 };
 
+const getProductSize = async (productSize) => {
+  let productSizes = await Product.find({ selectedSizes: { $in: [productSize] } });
+  return productSizes;
+};
+
 module.exports = {
   uploadMultipleFiles,
   createProduct,
@@ -218,4 +223,5 @@ module.exports = {
   getProductsByCategoryId,
   getProductsByCategory,
   getProductSearch,
+  getProductSize,
 };

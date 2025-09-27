@@ -19,6 +19,7 @@ router.route('/products/category/:categoryName').get(productController.getProduc
 router.route('/by-category/:categoryId').get(productController.getProductsByCategoryId);
 router.route('/product/detail/:id').get(productController.getProductByIdAndSimilerProducts);
 router.route('/global/search').get(productController.getProductSearch);
+router.route('/size/products').get(productController.getProductSize);
 
 
 
