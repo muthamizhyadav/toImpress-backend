@@ -206,9 +206,37 @@ const getProductSearch = async (req) => {
   return products;
 };
 
-const getProductSize = async (productSize) => {
-  let productSizes = await Product.find({ selectedSizes: { $in: [productSize] } });
-  return productSizes;
+const getProductSize = async (req) => {
+  const productSize = req.query.size || req.query.productSize;
+  if (!productSize) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Size query parameter is required');
+  }
+
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+
+  const filter = { selectedSizes: { $in: [productSize] } };
+
+  const [data, total] = await Promise.all([
+    Product.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }),
+    Product.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return {
+    success: true,
+    data,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
 };
 
 module.exports = {

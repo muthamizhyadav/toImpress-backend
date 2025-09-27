@@ -60,11 +60,7 @@ const getProductSearch = catchAsync(async (req, res) => {
 });
 
 const getProductSize = catchAsync(async (req, res) => {
-  const productSize = req.query.size;
-  if (!productSize) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Size query parameter is required');
-  }
-  const data = await ProductService.getProductSize(productSize);
+  const data = await ProductService.getProductSize(req);
   res.status(httpStatus.OK).send(data);
 });
 
