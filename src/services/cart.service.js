@@ -43,8 +43,6 @@ const addToCart = async (userId, productData) => {
         subtotal,
         image: product.images?.[0] || '',
       });
-    } else {
-      cart = await Cart.create({ user: userId, product: null, itemqty: 0, totalAmount: 0 });
     }
   } else {
     if (cart.product && cart.product.toString() === productId) {
@@ -278,6 +276,9 @@ const getCart = async (userId) => {
         },
       },
     },
+    {
+      $match: { product: { $ne: null } },
+    }
   ]);
 
   let couponsProduct = cart.filter((item) => item.isOfferAvailable);

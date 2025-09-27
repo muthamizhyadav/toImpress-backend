@@ -231,8 +231,7 @@ const getUserOrders = async (req) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const filter = { user: userId };
-  const sort = { createdAt: -1 };
-
+  const sort = { createdAt: -1 };  
   if (req.query.status) {
     filter.status = req.query.status;
   }
