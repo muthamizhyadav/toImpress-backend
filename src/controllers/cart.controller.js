@@ -5,19 +5,24 @@ const cartService = require('../services/cart.service');
 const addToCart = catchAsync(async (req, res) => {
   const userId = req.user.id;
   const cartData = req.body;
-  const { productId, quantity, selectedSize } = cartData;
+  const { productId, quantity, selectedSize, selectedColor } = cartData;
 
   const cartBefore = await cartService.getCart(userId);
-  const existingItem = Array.isArray(cartBefore?.data)
-    ? cartBefore.data.some((it) => {
-        if (!it.product) return false;
-        const sameProduct = it.product.toString() === productId;
-        if (selectedSize) {
-          return sameProduct && it.selectedSize === selectedSize;
-        }
-        return sameProduct;
-      })
-    : false;
+    const existingItem = Array.isArray(cartBefore?.data)
+      ? cartBefore.data.some((it) => {
+          if (!it.product) return false;
+          const sameProduct = it.product.toString() === productId;
+          // If controller passed a selectedSize/color, check exact match; otherwise treat undefined/empty as match
+          if (selectedSize || selectedColor) {
+            return (
+              sameProduct &&
+              (selectedSize ? it.selectedSize === selectedSize : true) &&
+              (selectedColor ? it.selectedColor === selectedColor : true)
+            );
+          }
+          return sameProduct;
+        })
+      : false;
   const cart = await cartService.addToCart(userId, cartData);
   let message = 'Item added to cart successfully';
 

@@ -12,17 +12,25 @@ const getCartByUserId = async (userId) => {
 };
 
 const addToCart = async (userId, productData) => {
-  const { productId, quantity, selectedSize } = productData;
+  const { productId, quantity, selectedSize, selectedColor } = productData;
   const product = await Product.findById(productId);
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
 
   const query = { user: userId, product: productId };
+  // color-aware matching
+  if (typeof selectedColor !== 'undefined' && selectedColor !== null) {
+    query.selectedColor = selectedColor;
+  } else {
+    query.$or = [{ selectedColor: { $exists: false } }, { selectedColor: null }, { selectedColor: '' }];
+  }
+
   if (typeof selectedSize !== 'undefined' && selectedSize !== null) {
     query.selectedSize = selectedSize;
   } else {
-    query.$or = [{ selectedSize: { $exists: false } }, { selectedSize: null }, { selectedSize: '' }];
+    query.$or = query.$or || [];
+    query.$or.push({ selectedSize: { $exists: false } }, { selectedSize: null }, { selectedSize: '' });
   }
 
   let cart = await Cart.findOne(query);
@@ -39,6 +47,7 @@ const addToCart = async (userId, productData) => {
         product: productId,
         itemqty: quantity,
         selectedSize,
+        selectedColor,
         price: product.price,
         subtotal,
         image: product.images?.[0] || '',
@@ -46,7 +55,7 @@ const addToCart = async (userId, productData) => {
     }
   } else {
     if (cart.product && cart.product.toString() === productId) {
-      const newQty = quantity;
+  const newQty = quantity;
 
       if (quantity === 0) {
         await cart.deleteOne();
@@ -57,8 +66,9 @@ const addToCart = async (userId, productData) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock for requested quantity');
       }
 
-      cart.itemqty = newQty;
-      cart.selectedSize = selectedSize || cart.selectedSize;
+  cart.itemqty = newQty;
+  cart.selectedSize = selectedSize || cart.selectedSize;
+  cart.selectedColor = selectedColor || cart.selectedColor;
       cart.subtotal = (product.salePrice || product.price) * cart.itemqty;
     } else {
       if (quantity > 0) {
@@ -68,7 +78,8 @@ const addToCart = async (userId, productData) => {
         const subtotal = (product.salePrice || product.price) * quantity;
         cart.product = productId;
         cart.itemqty = quantity;
-        cart.selectedSize = selectedSize;
+  cart.selectedSize = selectedSize;
+  cart.selectedColor = selectedColor;
         cart.price = product.price;
         cart.subtotal = subtotal;
         cart.image = product.images?.[0] || '';
@@ -230,8 +241,9 @@ const getCart = async (userId) => {
     {
       $project: {
         _id: 1,
-        productName: '$productDetails.productTitle',
-        selectedSize: 1,
+  productName: '$productDetails.productTitle',
+  selectedSize: 1,
+  selectedColor: 1,
         itemqty: 1,
         price: '$productDetails.price',
         salePrice: '$productDetails.salePrice',

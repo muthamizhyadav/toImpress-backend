@@ -29,6 +29,9 @@ const cartSchema = mongoose.Schema(
     selectedSize: {
       type: String,
     },
+    selectedColor: {
+      type: String,
+    },
   },
   {
     timestamps: true,
