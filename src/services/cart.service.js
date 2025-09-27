@@ -19,7 +19,6 @@ const addToCart = async (userId, productData) => {
   }
 
   const query = { user: userId, product: productId };
-  // color-aware matching
   if (typeof selectedColor !== 'undefined' && selectedColor !== null) {
     query.selectedColor = selectedColor;
   } else {
@@ -55,7 +54,7 @@ const addToCart = async (userId, productData) => {
     }
   } else {
     if (cart.product && cart.product.toString() === productId) {
-  const newQty = quantity;
+      const newQty = quantity;
 
       if (quantity === 0) {
         await cart.deleteOne();
@@ -66,9 +65,9 @@ const addToCart = async (userId, productData) => {
         throw new ApiError(httpStatus.BAD_REQUEST, 'Insufficient stock for requested quantity');
       }
 
-  cart.itemqty = newQty;
-  cart.selectedSize = selectedSize || cart.selectedSize;
-  cart.selectedColor = selectedColor || cart.selectedColor;
+      cart.itemqty = newQty;
+      cart.selectedSize = selectedSize || cart.selectedSize;
+      cart.selectedColor = selectedColor || cart.selectedColor;
       cart.subtotal = (product.salePrice || product.price) * cart.itemqty;
     } else {
       if (quantity > 0) {
@@ -78,8 +77,8 @@ const addToCart = async (userId, productData) => {
         const subtotal = (product.salePrice || product.price) * quantity;
         cart.product = productId;
         cart.itemqty = quantity;
-  cart.selectedSize = selectedSize;
-  cart.selectedColor = selectedColor;
+        cart.selectedSize = selectedSize;
+        cart.selectedColor = selectedColor;
         cart.price = product.price;
         cart.subtotal = subtotal;
         cart.image = product.images?.[0] || '';
@@ -92,7 +91,7 @@ const addToCart = async (userId, productData) => {
     await cart.save();
   }
 
-  return cart.product ? await cart.populate('product') : cart;
+  return cart;
 };
 
 const updateCart = async (userId, updateData) => {
@@ -241,9 +240,9 @@ const getCart = async (userId) => {
     {
       $project: {
         _id: 1,
-  productName: '$productDetails.productTitle',
-  selectedSize: 1,
-  selectedColor: 1,
+        productName: '$productDetails.productTitle',
+        selectedSize: 1,
+        selectedColor: 1,
         itemqty: 1,
         price: '$productDetails.price',
         salePrice: '$productDetails.salePrice',
@@ -290,7 +289,7 @@ const getCart = async (userId) => {
     },
     {
       $match: { product: { $ne: null } },
-    }
+    },
   ]);
 
   let couponsProduct = cart.filter((item) => item.isOfferAvailable);
@@ -345,7 +344,7 @@ const getCart = async (userId) => {
     type,
     discountvalue,
     isDiscountApplicable,
-    finalAmount: totalAmt+gst,
+    finalAmount: totalAmt + gst,
     minusValue,
     gst: gst,
   };
