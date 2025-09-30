@@ -6,6 +6,7 @@ const createRazorpayOrder = {
     currency: Joi.string().default('INR'),
     receipt: Joi.string().optional(),
     notes: Joi.object().optional(),
+    localOrderId: Joi.string().optional(),
   }),
 };
 

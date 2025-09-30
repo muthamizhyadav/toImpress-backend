@@ -20,12 +20,17 @@ const getProductsByCategory = async (req) => {
 
   const skip = (page - 1) * limit;
   const filter = { category: categoryName };
-  const priceFilter = {salesPrice: parseInt(price)};
+  const priceFilter = { salePrice: parseInt(price) };
+
   let products;
-  if (price == null){
-   products = await Product.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 });
-  }else{
-    products = await Product.find(priceFilter).skip(skip).limit(limit).sort({ createdAt: -1 });
+
+  if (!price) {
+    products = await Product.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 });
+  } else {
+    products = await Product.find(priceFilter)
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
   }
   const total = await Product.countDocuments(filter);
   if (!products || products.length === 0) {
