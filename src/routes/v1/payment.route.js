@@ -19,4 +19,9 @@ router.post(
   paymentController.verifyRazorpaySignature
 );
 
+router.get(
+  '/status/:receipt',
+  paymentController.getPaymentStatusByReceipt
+);
+
 module.exports = router;

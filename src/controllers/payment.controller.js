@@ -13,7 +13,14 @@ const verifyRazorpaySignature = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).json({ valid });
 });
 
+const getPaymentStatusByReceipt = catchAsync(async (req, res) => {
+  const { receipt } = req.params;
+  const result = await paymentService.getPaymentStatusByReceipt(receipt);
+  res.status(httpStatus.OK).json(result);
+});
+
 module.exports = {
   createRazorpayOrder,
   verifyRazorpaySignature,
+  getPaymentStatusByReceipt
 };
