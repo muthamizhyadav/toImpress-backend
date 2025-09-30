@@ -22,7 +22,7 @@ router
 router
   .route('/:id')
   .get(auth('getOrders'), validate(orderValidation.getOrder), orderController.getOrder)
-  .patch(auth('manageOrders'), validate(orderValidation.updateOrder), orderController.updateOrder)
+  .put(auth('manageOrders'), validate(orderValidation.updateOrder), orderController.updateOrder)
   .delete(auth('manageOrders'), validate(orderValidation.deleteOrder), orderController.deleteOrder);
 
 module.exports = router;

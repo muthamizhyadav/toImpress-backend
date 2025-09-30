@@ -186,7 +186,6 @@ const updateOrderById = async (req) => {
     throw new ApiError(httpStatus.BAD_REQUEST, `Invalid status transition from ${order.status} to ${updateBody.status}`);
   }
 
-  // Set delivered date when status changes to delivered
   if (updateBody.status === 'delivered') {
     updateBody.deliveredAt = new Date();
   }

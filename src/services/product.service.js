@@ -16,9 +16,17 @@ const getProductsByCategory = async (req) => {
   const categoryName = req.params.categoryName;
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 10;
+  const price = req.query.price || null;
+
   const skip = (page - 1) * limit;
   const filter = { category: categoryName };
-  const products = await Product.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 });
+  const priceFilter = {salesPrice: parseInt(price)};
+  let products;
+  if (price == null){
+   products = await Product.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 });
+  }else{
+    products = await Product.find(priceFilter).skip(skip).limit(limit).sort({ createdAt: -1 });
+  }
   const total = await Product.countDocuments(filter);
   if (!products || products.length === 0) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Category not found or no products');
