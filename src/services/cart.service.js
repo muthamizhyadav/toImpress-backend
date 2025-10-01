@@ -22,8 +22,7 @@ const addToCart = async (userId, productData) => {
   };
   const redImages = getColorImages(selectedColor);
 
-  console.log('Selected color images:', redImages);
-  
+
   const query = { user: userId, product: productId };
   if (typeof selectedColor !== 'undefined' && selectedColor !== null) {
     query.selectedColor = selectedColor;
@@ -55,7 +54,7 @@ const addToCart = async (userId, productData) => {
         selectedColor,
         price: product.price,
         subtotal,
-        image: redImages[0] || '',
+        image: redImages?.length>0 ?redImages[0]: product.images?.[0],
       });
     }
   } else {
