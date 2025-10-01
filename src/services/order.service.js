@@ -248,21 +248,38 @@ const getUserOrders = async (req) => {
       },
     },
     {
-      $unwind: { path: '$delhiveryDetails', preserveNullAndEmptyArrays: true },
+      $unwind: { path: '$delhiveryDetails' },
     },
     { $sort: sort },
     { $skip: skip },
     { $limit: limit },
   ]);
 
-  const total = await Order.countDocuments(filter);
-  const totalPages = Math.ceil(total / limit);
+  const total = await Order.aggregate([
+    {
+      $match:{user: userId}
+    },
+    {
+      $lookup: {
+        from: 'delhiveryorders',
+        localField: '_id',
+        foreignField: 'orderId',
+        as: 'delhiveryDetails',
+      },
+    },
+    {
+      $unwind: { path: '$delhiveryDetails' },
+    },
+  ])
+
+  const totalPages = Math.ceil(total.length / limit);
+  const Total = total.length;
 
   return {
     success: true,
     data: orders,
     pagination: {
-      total,
+      total:Total,
       totalPages,
       currentPage: page,
       itemsPerPage: limit,
