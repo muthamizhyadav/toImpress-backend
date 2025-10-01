@@ -22,7 +22,8 @@ const addToCart = async (userId, productData) => {
   };
   const redImages = getColorImages(selectedColor);
 
-
+  console.log('Selected color images:', redImages);
+  
   const query = { user: userId, product: productId };
   if (typeof selectedColor !== 'undefined' && selectedColor !== null) {
     query.selectedColor = selectedColor;
