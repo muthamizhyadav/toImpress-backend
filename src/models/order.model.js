@@ -34,9 +34,8 @@ const orderItemSchema = mongoose.Schema({
 });
 
 const shippingAddressSchema = mongoose.Schema({
-  street: {
+  line1: {
     type: String,
-    required: true,
     trim: true,
   },
   city: {
@@ -49,9 +48,8 @@ const shippingAddressSchema = mongoose.Schema({
     required: true,
     trim: true,
   },
-  zip: {
+  pincode: {
     type: String,
-    required: true,
     trim: true,
   },
   country: {
