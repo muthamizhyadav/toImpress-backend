@@ -17,6 +17,11 @@ const addToCart = async (userId, productData) => {
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
+  const getColorImages = (color) => {
+    return product.colorData?.[color]?.images || [];
+  };
+  const redImages = getColorImages(selectedColor);
+
 
   const query = { user: userId, product: productId };
   if (typeof selectedColor !== 'undefined' && selectedColor !== null) {
@@ -49,7 +54,7 @@ const addToCart = async (userId, productData) => {
         selectedColor,
         price: product.price,
         subtotal,
-        image: product.images?.[0] || '',
+        image: redImages[0] || '',
       });
     }
   } else {

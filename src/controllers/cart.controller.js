@@ -12,7 +12,6 @@ const addToCart = catchAsync(async (req, res) => {
       ? cartBefore.data.some((it) => {
           if (!it.product) return false;
           const sameProduct = it.product.toString() === productId;
-          // If controller passed a selectedSize/color, check exact match; otherwise treat undefined/empty as match
           if (selectedSize || selectedColor) {
             return (
               sameProduct &&
