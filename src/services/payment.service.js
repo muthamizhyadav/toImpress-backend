@@ -1,6 +1,6 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-
+const RazorPayModel = require('../models/razorpayOrder.model');
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -37,6 +37,10 @@ const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, i
 
 const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {
   const body = razorpay_order_id + '|' + razorpay_payment_id;
+  let checkPaymentStatus = await getPaymentStatusByOrderId(razorpay_order_id);
+  if(checkPaymentStatus){
+    await RazorPayModel.findOneAndUpdate({ orderId: razorpay_order_id }, { status: checkPaymentStatus.status });
+  }
   const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
   return expectedSignature === razorpay_signature;
 };
