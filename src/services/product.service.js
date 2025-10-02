@@ -1,5 +1,5 @@
 const httpStatus = require('http-status');
-const { Category, Product } = require('../models');
+const { Category, Product, Coupon } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { uploadMultipleToR2 } = require('../utils/multipleUpload');
 
@@ -94,7 +94,7 @@ const getProductById = async (req) => {
   const product = await Product.findById(id);
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
-  }
+  }  
   return product;
 };
 
@@ -189,6 +189,7 @@ const getProductByIdAndSimilerProducts = async (req) => {
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
+  const coupon = await Coupon.findOne({ products: {$in:[id]}, isActive: true });
   const similarProducts = await Product.find({
     category: product.category,
     _id: { $ne: id },
@@ -196,6 +197,7 @@ const getProductByIdAndSimilerProducts = async (req) => {
   return {
     product,
     similarProducts,
+    coupon: coupon || null,
   };
 };
 

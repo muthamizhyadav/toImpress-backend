@@ -44,6 +44,9 @@ const razorpayOrderSchema = mongoose.Schema(
     raw: {
       type: Object,
     },
+    order:{
+      type: String,
+    }
   },
   {
     timestamps: true,
