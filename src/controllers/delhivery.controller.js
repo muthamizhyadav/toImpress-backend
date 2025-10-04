@@ -164,6 +164,11 @@ const testMinimalShipment = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).json(result);
 });
 
+const getOrders = catchAsync(async (req, res) => {
+  const result = await delhiveryService.getOrders(req);
+  res.status(httpStatus.OK).json(result);
+});
+
 module.exports = {
   createShipment,
   trackShipment,
@@ -171,4 +176,5 @@ module.exports = {
   testJsonParsing,
   testApiConnectivity,
   testMinimalShipment,
+  getOrders
 };

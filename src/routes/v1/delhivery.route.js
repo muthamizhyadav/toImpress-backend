@@ -37,4 +37,9 @@ router.get(
   delhiveryController.trackShipment
 );
 
+router.get(
+  '/orders',
+  delhiveryController.getOrders
+);
+
 module.exports = router;

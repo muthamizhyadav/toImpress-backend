@@ -85,7 +85,7 @@ const DELHIVERY_BASE_URL = 'https://track.delhivery.com';
 //       timeout: 30000,
 //     });
 //     if (condition) {
-      
+
 //     }
 //       console.log(response.data.packages, 'BEFORE IF');
 
@@ -129,7 +129,6 @@ const DELHIVERY_BASE_URL = 'https://track.delhivery.com';
 //     throw error;
 //   }
 // };
-
 
 const createShipment = async (shipmentData, userId) => {
   if (!userId) {
@@ -220,7 +219,7 @@ const createShipment = async (shipmentData, userId) => {
         // Determine if the package was successful or failed
         const isSuccess = pkg.status === 'Success' || pkg.status === 'success';
         const isFail = pkg.status === 'Fail' || pkg.status === 'fail';
-        
+
         // Extract failure reason from remarks
         let failureReason = '';
         if (isFail && pkg.remarks && pkg.remarks.length > 0) {
@@ -258,18 +257,20 @@ const createShipment = async (shipmentData, userId) => {
       try {
         await DelhiveryOrder.insertMany(ordersToInsert);
         console.log(`✅ Saved ${ordersToInsert.length} package records to database`);
-        
+
         // Log statistics about successful vs failed packages
-        const successfulCount = ordersToInsert.filter(pkg => pkg.isSuccessful).length;
-        const failedCount = ordersToInsert.filter(pkg => pkg.isFailed).length;
-        
+        const successfulCount = ordersToInsert.filter((pkg) => pkg.isSuccessful).length;
+        const failedCount = ordersToInsert.filter((pkg) => pkg.isFailed).length;
+
         console.log(`📊 Package creation summary: ${successfulCount} successful, ${failedCount} failed`);
-        
+
         if (failedCount > 0) {
           console.log('❌ Failed packages:');
-          ordersToInsert.filter(pkg => pkg.isFailed).forEach(pkg => {
-            console.log(`   - Ref: ${pkg.refnum}, Reason: ${pkg.failureReason}`);
-          });
+          ordersToInsert
+            .filter((pkg) => pkg.isFailed)
+            .forEach((pkg) => {
+              console.log(`   - Ref: ${pkg.refnum}, Reason: ${pkg.failureReason}`);
+            });
         }
 
         // Return the response data regardless of success/failure
@@ -279,13 +280,12 @@ const createShipment = async (shipmentData, userId) => {
             success: true,
             totalSaved: ordersToInsert.length,
             successful: successfulCount,
-            failed: failedCount
-          }
+            failed: failedCount,
+          },
         };
-
       } catch (err) {
         console.error('❌ Error saving DelhiveryOrders:', err.message);
-        
+
         // Instead of throwing error, return the API response with database save failure info
         console.log('⚠️ Continuing without database save - returning API response only');
         return {
@@ -293,8 +293,8 @@ const createShipment = async (shipmentData, userId) => {
           databaseSave: {
             success: false,
             error: err.message,
-            note: 'API call completed but failed to save to database'
-          }
+            note: 'API call completed but failed to save to database',
+          },
         };
       }
     } else {
@@ -306,19 +306,19 @@ const createShipment = async (shipmentData, userId) => {
     if (error.response) {
       console.error('Response status:', error.response.status);
       console.error('Response error:', error.response.data);
-      
+
       return {
         success: false,
         error: error.message,
         apiError: error.response.data,
-        note: 'API call failed'
+        note: 'API call failed',
       };
     }
-    
+
     return {
       success: false,
       error: error.message,
-      note: 'Shipment creation process failed'
+      note: 'Shipment creation process failed',
     };
   }
 };
@@ -356,8 +356,84 @@ const getRegisteredWarehouses = async () => {
   }
 };
 
+const getOrders = async (req, res) => {
+  const { page = 1, limit = 10, status, fromDate, toDate, search } = req.query;
+
+  const matchStage = {};
+
+  if (status) {
+    matchStage['orders.status'] = status;
+  }
+
+  if (fromDate && toDate) {
+    matchStage['orders.createdAt'] = {
+      $gte: new Date(fromDate),
+      $lte: new Date(toDate),
+    };
+  }
+
+  if (search) {
+    matchStage['orders.customerName'] = { $regex: search, $options: 'i' };
+  }
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const GetOrders = await DelhiveryOrder.aggregate([
+    {
+      $lookup: {
+        from: 'orders',
+        localField: 'orderId',
+        foreignField: '_id',
+        as: 'orders',
+      },
+    },
+    { $unwind: '$orders' },
+    {
+      $lookup: {
+        from: 'razorpayorders',
+        localField: 'orders._id',
+        foreignField: 'order',
+        as: 'paymentDetails',
+      },
+    },
+
+    {
+      $lookup:{
+        from: 'users',
+        localField: 'userId',
+        foreignField: '_id',
+        as: 'userDetails'
+      }
+    },
+    { $unwind: { path: '$userDetails', preserveNullAndEmptyArrays: true } },
+    { $unwind: { path: '$paymentDetails'} },
+
+    { $match: matchStage },
+    { $sort: { 'orders.createdAt': -1 } },
+    {
+      $facet: {
+        data: [{ $skip: skip }, { $limit: parseInt(limit) }],
+        totalCount: [{ $count: 'count' }],
+      },
+    },
+  ]);
+
+  const data = GetOrders[0]?.data || [];
+  const totalCount = GetOrders[0]?.totalCount[0]?.count || 0;
+
+  return {
+    success: true,
+    page: parseInt(page),
+    limit: parseInt(limit),
+    totalPages: Math.ceil(totalCount / limit),
+    totalCount,
+    data,
+  };
+};
+
 module.exports = {
   createShipment,
   trackShipment,
   getRegisteredWarehouses,
+  getOrders,
 };

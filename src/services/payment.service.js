@@ -8,6 +8,7 @@ const razorpay = new Razorpay({
 
 const { RazorpayOrder, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
+const { log } = require('console');
 const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, items, localOrderId }, userId) => {
   try {
     if (!localOrderId) {
@@ -56,8 +57,7 @@ const getPaymentStatusByOrderId = async (orderId) => {
 
     if (!payments.items || payments.items.length === 0) {
       return { success: false, message: 'No payments found for this order' };
-    }
-
+    }    
     const payment = payments.items[0];
     return {
       success: true,
@@ -83,7 +83,12 @@ const getPaymentStatusByReceipt = async (receipt) => {
       return { success: false, message: 'Order not found for this receipt' };
     }
     const order = orders.items[0];
-    return await getPaymentStatusByOrderId(order.id);
+    let paymentStatus = await getPaymentStatusByOrderId(order.id);
+    if (paymentStatus.payment_id) {
+      await RazorPayModel.findOneAndUpdate({ orderId: order.id }, { status: paymentStatus.status });
+    }
+     console.log('paymentStatus', paymentStatus);
+    return paymentStatus
   } catch (error) {
     console.error('Error fetching payment status by receipt:', error);
     throw error;
