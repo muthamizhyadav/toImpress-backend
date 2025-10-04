@@ -21,6 +21,7 @@ router
   .patch(auth('manageUsers'), userController.updateUser)
   .delete(auth('manageUsers'), validate(userValidation.deleteUser), userController.deleteUser);
 router.post('/:userId/address', auth(), userController.addUserAddress);
+router.get('/admin/user/details', userController.getUsersDetails);
 
 module.exports = router;
 

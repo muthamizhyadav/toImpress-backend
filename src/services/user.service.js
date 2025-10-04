@@ -101,7 +101,7 @@ const addOrUpdateUserAddress = async (userId, address) => {
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
-  console.log(address,"user details")
+  console.log(address, 'user details');
 
   user.address = address;
   await user.save();
@@ -122,6 +122,21 @@ const deleteUserById = async (userId) => {
   return user;
 };
 
+const getUsersDetails = async (req) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const total = await User.countDocuments();
+  const users = await User.aggregate([{ $sort: { _id: -1 } }, { $skip: skip }, { $limit: limit }]);
+  return {
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+    users,
+  };
+};
+
 module.exports = {
   createUser,
   queryUsers,
@@ -131,4 +146,5 @@ module.exports = {
   deleteUserById,
   addUserAddress,
   addOrUpdateUserAddress,
+  getUsersDetails,
 };

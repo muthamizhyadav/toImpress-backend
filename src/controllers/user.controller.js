@@ -89,6 +89,11 @@ const deleteUser = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
+const getUsersDetails = catchAsync(async (req, res) => {
+  const users = await userService.getUsersDetails(req);
+  res.status(httpStatus.OK).json(users);
+});
+
 module.exports = {
   createUser,
   getUsers,
@@ -98,4 +103,5 @@ module.exports = {
   addUserAddress,
   requestOtp,
   verifyOtp,
+  getUsersDetails,
 };
