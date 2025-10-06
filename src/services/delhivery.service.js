@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { DelhiveryOrder } = require('../models');
+const { DelhiveryOrder, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status');
 
@@ -357,59 +357,109 @@ const getRegisteredWarehouses = async () => {
 };
 
 const getOrders = async (req, res) => {
+  // const { page = 1, limit = 10, status, fromDate, toDate, search } = req.query;
+
+  // const matchStage = {};
+
+  // if (status) {
+  //   matchStage['orders.status'] = status;
+  // }
+
+  // if (fromDate && toDate) {
+  //   matchStage['orders.createdAt'] = {
+  //     $gte: new Date(fromDate),
+  //     $lte: new Date(toDate),
+  //   };
+  // }
+
+  // if (search) {
+  //   matchStage['orders.customerName'] = { $regex: search, $options: 'i' };
+  // }
+
+  // const GetOrders = await DelhiveryOrder.aggregate([
+  //   {
+  //     $lookup: {
+  //       from: 'orders',
+  //       localField: 'orderId',
+  //       foreignField: '_id',
+  //       as: 'orders',
+  //     },
+  //   },
+  //   { $unwind: '$orders' },
+  //   {
+  //     $lookup: {
+  //       from: 'razorpayorders',
+  //       localField: 'orders._id',
+  //       foreignField: 'order',
+  //       as: 'paymentDetails',
+  //     },
+  //   },
+
+  //   {
+  //     $lookup:{
+  //       from: 'users',
+  //       localField: 'userId',
+  //       foreignField: '_id',
+  //       as: 'userDetails'
+  //     }
+  //   },
+  //   { $unwind: { path: '$userDetails', preserveNullAndEmptyArrays: true } },
+  //   { $unwind: { path: '$paymentDetails'} },
+
+  //   { $match: matchStage },
+  //   { $sort: { 'orders.createdAt': -1 } },
+  //   {
+  //     $facet: {
+  //       data: [{ $skip: skip }, { $limit: parseInt(limit) }],
+  //       totalCount: [{ $count: 'count' }],
+  //     },
+  //   },
+  // ]);
+
+  // const data = GetOrders[0]?.data || [];
+  // const totalCount = GetOrders[0]?.totalCount[0]?.count || 0;
+
+  // return {
+  //   success: true,
+  //   page: parseInt(page),
+  //   limit: parseInt(limit),
+  //   totalPages: Math.ceil(totalCount / limit),
+  //   totalCount,
+  //   data,
+  // };
+
   const { page = 1, limit = 10, status, fromDate, toDate, search } = req.query;
-
-  const matchStage = {};
-
-  if (status) {
-    matchStage['orders.status'] = status;
-  }
-
-  if (fromDate && toDate) {
-    matchStage['orders.createdAt'] = {
-      $gte: new Date(fromDate),
-      $lte: new Date(toDate),
-    };
-  }
-
-  if (search) {
-    matchStage['orders.customerName'] = { $regex: search, $options: 'i' };
-  }
-
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
-  const GetOrders = await DelhiveryOrder.aggregate([
-    {
-      $lookup: {
-        from: 'orders',
-        localField: 'orderId',
-        foreignField: '_id',
-        as: 'orders',
-      },
-    },
-    { $unwind: '$orders' },
+  const GetOrders = await Order.aggregate([
     {
       $lookup: {
         from: 'razorpayorders',
-        localField: 'orders._id',
+        localField: '_id',
         foreignField: 'order',
         as: 'paymentDetails',
       },
     },
-
+    { $unwind: { path: '$paymentDetails' } },
     {
-      $lookup:{
+      $lookup: {
         from: 'users',
-        localField: 'userId',
+        localField: 'user',
         foreignField: '_id',
-        as: 'userDetails'
-      }
+        as: 'userDetails',
+      },
     },
+      {
+      $lookup: {
+        from: 'delhiveryorders',
+        localField: '_id',
+        foreignField: 'orderId',
+        as: 'shipment',
+      },
+    },
+    { $unwind: { path: '$shipment', preserveNullAndEmptyArrays: true } },
     { $unwind: { path: '$userDetails', preserveNullAndEmptyArrays: true } },
-    { $unwind: { path: '$paymentDetails'} },
-
-    { $match: matchStage },
-    { $sort: { 'orders.createdAt': -1 } },
+    { $sort: { createdAt: -1 } },
     {
       $facet: {
         data: [{ $skip: skip }, { $limit: parseInt(limit) }],
@@ -417,7 +467,6 @@ const getOrders = async (req, res) => {
       },
     },
   ]);
-
   const data = GetOrders[0]?.data || [];
   const totalCount = GetOrders[0]?.totalCount[0]?.count || 0;
 
