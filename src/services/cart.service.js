@@ -351,7 +351,7 @@ const getCart = async (userId) => {
     isDiscountApplicable,
     finalAmount: totalAmt,
     minusValue,
-    gst: gst,
+    gst: 0,
   };
 };
 
