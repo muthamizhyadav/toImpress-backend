@@ -65,7 +65,7 @@ const createOrder = async (req) => {
     paymentMethod,
     notes,
     shippingCost: shippingCost || 0,
-    tax: tax || 0,
+    tax: 0,
     discount: discount || 0,
   };
 
