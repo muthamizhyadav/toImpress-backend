@@ -71,11 +71,6 @@ couponSchema.pre('save', function (next) {
   next();
 });
 
-// Static methods
-couponSchema.statics.isCodeTaken = async function (code, excludeCouponId) {
-  const coupon = await this.findOne({ code, _id: { $ne: excludeCouponId } });
-  return !!coupon;
-};
 
 // Index for faster queries
 couponSchema.index({ code: 1 });

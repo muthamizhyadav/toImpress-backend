@@ -8,9 +8,6 @@ const ApiError = require('../utils/ApiError');
  * @returns {Promise<Coupon>}
  */
 const createCoupon = async (couponBody) => {
-  if (await Coupon.isCodeTaken(couponBody.code)) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon code already taken');
-  }
   return Coupon.create(couponBody);
 };
 
