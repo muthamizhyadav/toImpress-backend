@@ -61,21 +61,6 @@ const couponSchema = new mongoose.Schema(
 couponSchema.plugin(toJSON);
 couponSchema.plugin(paginate);
 
-// Validation middleware
-couponSchema.pre('save', function (next) {
-  // For product coupons, ensure products array is not empty if specified
-  if (this.couponFor === 'product' && this.products && this.products.length === 0) {
-    // Allow empty products array for global product coupons
-  }
-
-  next();
-});
-
-
-// Index for faster queries
-couponSchema.index({ code: 1 });
-couponSchema.index({ isActive: 1 });
-couponSchema.index({ couponFor: 1 });
 
 const Coupon = mongoose.model('Coupon', couponSchema);
 
