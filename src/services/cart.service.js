@@ -205,7 +205,6 @@ const clearCart = async (userId) => {
 
   return null;
 };
-
 const getCart = async (userId) => {
   let cart = await Cart.aggregate([
     {
@@ -230,7 +229,10 @@ const getCart = async (userId) => {
           {
             $match: {
               $expr: {
-                $and: [{ $in: ['$$productId', '$products'] }, { $eq: ['$isActive', true] }],
+                $and: [
+                  { $in: ['$$productId', '$products'] },
+                  { $eq: ['$isActive', true] },
+                ],
               },
             },
           },
@@ -241,7 +243,6 @@ const getCart = async (userId) => {
     {
       $unwind: { path: '$availableCoupons', preserveNullAndEmptyArrays: true },
     },
-
     {
       $project: {
         _id: 1,
@@ -253,19 +254,16 @@ const getCart = async (userId) => {
         salePrice: '$productDetails.salePrice',
         image: 1,
         product: 1,
-        couponDiscount: {
-          $ifNull: ['$availableCoupons.discount', null],
-        },
-        couponOfferDiscount: {
-          $ifNull: ['$availableCoupons.offerDiscount', null],
-        },
-        couponType: {
-          $ifNull: ['$availableCoupons.type', null],
-        },
+        couponDiscount: { $ifNull: ['$availableCoupons.discount', null] },
+        couponOfferDiscount: { $ifNull: ['$availableCoupons.offerDiscount', null] },
+        couponType: { $ifNull: ['$availableCoupons.type', null] },
         isOfferAvailable: {
           $cond: {
             if: {
-              $and: [{ $ne: ['$availableCoupons', null] }, { $ne: [{ $ifNull: ['$availableCoupons.type', null] }, null] }],
+              $and: [
+                { $ne: ['$availableCoupons', null] },
+                { $ne: [{ $ifNull: ['$availableCoupons.type', null] }, null] },
+              ],
             },
             then: true,
             else: false,
@@ -278,9 +276,7 @@ const getCart = async (userId) => {
               $multiply: [
                 {
                   $divide: [
-                    {
-                      $subtract: ['$productDetails.price', '$productDetails.salePrice'],
-                    },
+                    { $subtract: ['$productDetails.price', '$productDetails.salePrice'] },
                     '$productDetails.price',
                   ],
                 },
@@ -295,7 +291,30 @@ const getCart = async (userId) => {
     {
       $match: { product: { $ne: null } },
     },
+    // 👇 NEW STAGE: Group same products together
+    {
+      $group: {
+        _id: '$product', // group by product ID
+        productName: { $first: '$productName' },
+        selectedSize: { $first: '$selectedSize' },
+        selectedColor: { $first: '$selectedColor' },
+        price: { $first: '$price' },
+        salePrice: { $first: '$salePrice' },
+        image: { $first: '$image' },
+        couponDiscount: { $first: '$couponDiscount' },
+        couponOfferDiscount: { $first: '$couponOfferDiscount' },
+        couponType: { $first: '$couponType' },
+        isOfferAvailable: { $first: '$isOfferAvailable' },
+        discountPercentage: { $first: '$discountPercentage' },
+        // Sum all quantities of same product
+        itemqty: { $sum: '$itemqty' },
+      },
+    },
   ]);
+
+  // --------------------------
+  // After aggregation, do calculations
+  // --------------------------
 
   let couponsProduct = cart.filter((item) => item.isOfferAvailable);
   let allProduct = cart.length > 0 ? cart.reduce((sum, item) => sum + item.salePrice * item.itemqty, 0) : 0;
@@ -338,6 +357,7 @@ const getCart = async (userId) => {
   } else {
     discountedAmount = allProduct;
   }
+
   const totalAmt = Math.round(discountedAmount);
   const gst = Math.round(parseFloat((totalAmt * 0.05).toFixed(2)));
 
