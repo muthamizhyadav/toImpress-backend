@@ -8,13 +8,14 @@ const razorpay = new Razorpay({
 
 const { RazorpayOrder, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
-const { log } = require('console');
+const httpStatus = require('http-status');
+
 const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, items, localOrderId }, userId) => {
   try {
     if (!localOrderId) {
-      await Order.findByIdAndDelete(localOrderId);
-      return ApiError(httpStatus.BAD_REQUEST, 'Local order ID is required');
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Local order ID is required');
     }
+    
     const order = await razorpay.orders.create({
       amount,
       currency,
@@ -32,7 +33,7 @@ const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, i
       raw: order,
       items: items || [],
       userId: userId || null,
-      order: localOrderId || null,
+      order: localOrderId,
     });
     return order;
   } catch (error) {

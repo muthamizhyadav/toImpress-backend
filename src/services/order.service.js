@@ -49,7 +49,6 @@ const createOrder = async (req) => {
 
   totalAmount += (shippingCost || 0) + (tax || 0) - (discount || 0);
 
-  // Handle shippingAddress and billingAddress if they are arrays
   const shipAddr = Array.isArray(shippingAddress) ? shippingAddress[0] : shippingAddress;
   const billAddr = billingAddress ? (Array.isArray(billingAddress) ? billingAddress[0] : billingAddress) : shipAddr;
 

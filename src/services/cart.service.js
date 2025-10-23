@@ -306,8 +306,7 @@ const getCart = async (userId) => {
         couponType: { $first: '$couponType' },
         isOfferAvailable: { $first: '$isOfferAvailable' },
         discountPercentage: { $first: '$discountPercentage' },
-        // Sum all quantities of same product
-        itemqty: { $sum: '$itemqty' },
+        itemqty: { $first: '$itemqty' },
       },
     },
   ]);
