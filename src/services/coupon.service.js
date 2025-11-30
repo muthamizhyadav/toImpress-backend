@@ -85,7 +85,7 @@ const deleteCouponById = async (couponId) => {
  */
 const validateCoupon = async (code, cartTotal = 0, productIds = []) => {
   const coupon = await getCouponByCode(code);
-  
+
   if (!coupon) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
@@ -106,11 +106,9 @@ const validateCoupon = async (code, cartTotal = 0, productIds = []) => {
 
   // Check product eligibility for product coupons
   if (coupon.couponFor === 'product' && coupon.products.length > 0) {
-    const couponProductIds = coupon.products.map(p => p._id.toString());
-    const hasEligibleProduct = productIds.some(productId => 
-      couponProductIds.includes(productId.toString())
-    );
-    
+    const couponProductIds = coupon.products.map((p) => p._id.toString());
+    const hasEligibleProduct = productIds.some((productId) => couponProductIds.includes(productId.toString()));
+
     if (!hasEligibleProduct) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'No eligible products in cart for this coupon');
     }
@@ -119,7 +117,7 @@ const validateCoupon = async (code, cartTotal = 0, productIds = []) => {
   return {
     valid: true,
     coupon,
-    message: 'Coupon is valid'
+    message: 'Coupon is valid',
   };
 };
 
@@ -133,9 +131,9 @@ const validateCoupon = async (code, cartTotal = 0, productIds = []) => {
 const applyCoupon = async (code, cartTotal, productIds) => {
   const validation = await validateCoupon(code, cartTotal, productIds);
   const { coupon } = validation;
-  
+
   let discountAmount = 0;
-  
+
   if (coupon.type === 'percentage') {
     discountAmount = (cartTotal * coupon.discount) / 100;
   } else if (coupon.type === 'fixed') {
@@ -144,7 +142,7 @@ const applyCoupon = async (code, cartTotal, productIds) => {
 
   // Ensure discount doesn't exceed cart total
   discountAmount = Math.min(discountAmount, cartTotal);
-  
+
   const finalAmount = cartTotal - discountAmount;
 
   return {
@@ -154,7 +152,7 @@ const applyCoupon = async (code, cartTotal, productIds) => {
     discountAmount: Math.round(discountAmount * 100) / 100, // Round to 2 decimal places
     originalAmount: cartTotal,
     finalAmount: Math.round(finalAmount * 100) / 100,
-    savings: Math.round(discountAmount * 100) / 100
+    savings: Math.round(discountAmount * 100) / 100,
   };
 };
 
@@ -168,7 +166,7 @@ const incrementUsageCount = async (code) => {
   if (!coupon) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
-  
+
   coupon.usageCount += 1;
   await coupon.save();
   return coupon;
@@ -184,15 +182,81 @@ const getActiveCouponsForProduct = async (productId) => {
     isActive: true,
     $or: [
       { couponFor: 'minPurchase' },
-      { 
+      {
         couponFor: 'product',
         $or: [
           { products: { $size: 0 } }, // Global product coupons
-          { products: productId }
-        ]
-      }
-    ]
+          { products: productId },
+        ],
+      },
+    ],
   });
+};
+const getCouponByProductAndAmount = async (body) => {
+  const productIds = Object.keys(body);
+  const productsWithAmount = Object.values(body);
+
+  // Step 1: Fetch matching coupons
+  const coupons = await Coupon.find({
+    isActive: true,
+    products: { $in: productIds },
+  });
+
+  // Step 2: Filter on product amount, minPurchase & discount rules
+  const applicableCoupons = coupons.filter((coupon) =>
+    productsWithAmount.some(
+      (item) =>
+        coupon.products.includes(item.id) && (coupon.minPurchaseAmount ?? 0) <= item.amount && item.amount >= coupon.discount // NEW RULE ✔️
+    )
+  );
+
+  // Step 3: Group by category
+  const groupedByCategory = applicableCoupons.reduce((acc, coupon) => {
+    (acc[coupon.category] = acc[coupon.category] || []).push(coupon);
+    return acc;
+  }, {});
+
+  // Step 4: Pick best coupon per category & calculate applied discount amount
+  const finalResult = Object.keys(groupedByCategory).map((category) => {
+    const coupons = groupedByCategory[category];
+
+    const bestCoupon = coupons.reduce((prev, curr) => (curr.discount > prev.discount ? curr : prev));
+
+    const product = productsWithAmount.find((p) => bestCoupon.products.includes(p.id));
+
+    const amount = product?.amount ?? 0;
+
+    let appliedDiscountAmount = 0;
+
+    if (bestCoupon.type === 'percentage') {
+      appliedDiscountAmount = Math.round((amount * Number(bestCoupon.offerDiscount)) / 100);
+    } else if (bestCoupon.type === 'flat') {
+      appliedDiscountAmount = bestCoupon.discount;
+    }
+
+    return {
+      category,
+      discount: bestCoupon.discount,
+      offerDiscount: bestCoupon.offerDiscount,
+      type: bestCoupon.type,
+      appliedAmount: appliedDiscountAmount,
+      actualAmount: amount,
+    };
+  });
+
+  if (finalResult.length > 0) {
+    const totalAppliedDiscount = finalResult.reduce((acc, curr) => acc + curr.appliedAmount, 0);
+    console.log(totalAppliedDiscount);
+    return {
+      totalDiscount: totalAppliedDiscount,
+      details: finalResult,
+    };
+  } else {
+    return {
+      totalDiscount: 0,
+      details: [],
+    };
+  }
 };
 
 module.exports = {
@@ -206,4 +270,5 @@ module.exports = {
   applyCoupon,
   incrementUsageCount,
   getActiveCouponsForProduct,
+  getCouponByProductAndAmount,
 };

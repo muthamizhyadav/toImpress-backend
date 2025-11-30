@@ -67,6 +67,11 @@ const incrementUsageCount = catchAsync(async (req, res) => {
   });
 });
 
+const getCouponByProductAndAmount = catchAsync(async (req, res) => {
+  const products = await couponService.getCouponByProductAndAmount(req.body);
+  res.send(products);
+});
+
 module.exports = {
   createCoupon,
   getCoupons,
@@ -78,4 +83,5 @@ module.exports = {
   applyCoupon,
   getActiveCouponsForProduct,
   incrementUsageCount,
+  getCouponByProductAndAmount
 };

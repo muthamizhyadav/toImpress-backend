@@ -25,17 +25,12 @@ router
   .route('/validate')
   .post(auth('getCoupons'), validate(couponValidation.validateCoupon), couponController.validateCoupon);
 
-router
-  .route('/apply')
-  .post(auth('getCoupons'), validate(couponValidation.applyCoupon), couponController.applyCoupon);
+router.route('/apply').post(auth('getCoupons'), validate(couponValidation.applyCoupon), couponController.applyCoupon);
 
-router
-  .route('/product/:productId')
-  .get(auth('getCoupons'), couponController.getActiveCouponsForProduct);
+router.route('/product/:productId').get(auth('getCoupons'), couponController.getActiveCouponsForProduct);
 
-router
-  .route('/increment-usage')
-  .post(auth('manageCoupons'), couponController.incrementUsageCount);
+router.route('/increment-usage').post(auth('manageCoupons'), couponController.incrementUsageCount);
+router.route('/by-product-and-amount').post(couponController.getCouponByProductAndAmount);
 
 module.exports = router;
 
