@@ -193,70 +193,41 @@ const getActiveCouponsForProduct = async (productId) => {
   });
 };
 const getCouponByProductAndAmount = async (body) => {
-  const productIds = Object.keys(body);
-  const productsWithAmount = Object.values(body);
+  const results = [];
 
-  // Step 1: Fetch matching coupons
-  const coupons = await Coupon.find({
-    isActive: true,
-    products: { $in: productIds },
-  });
+  for (const item of body) {
+    const { category, ids, total } = item;
 
-  // Step 2: Filter on product amount, minPurchase & discount rules
-  const applicableCoupons = coupons.filter((coupon) =>
-    productsWithAmount.some(
-      (item) =>
-        coupon.products.includes(item.id) && (coupon.minPurchaseAmount ?? 0) <= item.amount && item.amount >= coupon.discount // NEW RULE ✔️
-    )
-  );
+    const coupon = await Coupon.findOne({
+      products: { $in: ids },
+      discount: { $lte: total },
+      isActive: true,
+    }).sort({ discount: -1 });
 
-  // Step 3: Group by category
-  const groupedByCategory = applicableCoupons.reduce((acc, coupon) => {
-    (acc[coupon.category] = acc[coupon.category] || []).push(coupon);
-    return acc;
-  }, {});
+    if (coupon) {
+      let finalDiscount = 0;
 
-  // Step 4: Pick best coupon per category & calculate applied discount amount
-  const finalResult = Object.keys(groupedByCategory).map((category) => {
-    const coupons = groupedByCategory[category];
+      if (coupon.type === 'percentage') {
+        const percentage = parseFloat(coupon.offerDiscount || 0);
+        finalDiscount = Math.floor((total * percentage) / 100);
+      } else {
+        finalDiscount = coupon.discount;
+      }
 
-    const bestCoupon = coupons.reduce((prev, curr) => (curr.discount > prev.discount ? curr : prev));
+      const netAmount = Math.max(total - finalDiscount, 0);
 
-    const product = productsWithAmount.find((p) => bestCoupon.products.includes(p.id));
-
-    const amount = product?.amount ?? 0;
-
-    let appliedDiscountAmount = 0;
-
-    if (bestCoupon.type === 'percentage') {
-      appliedDiscountAmount = Math.round((amount * Number(bestCoupon.offerDiscount)) / 100);
-    } else if (bestCoupon.type === 'flat') {
-      appliedDiscountAmount = bestCoupon.discount;
+      results.push({
+        category,
+        total,
+        finalDiscount,
+        netAmount,
+        discount: coupon.offerDiscount,
+        type: coupon.type,
+      });
     }
-
-    return {
-      category,
-      discount: bestCoupon.discount,
-      offerDiscount: bestCoupon.offerDiscount,
-      type: bestCoupon.type,
-      appliedAmount: appliedDiscountAmount,
-      actualAmount: amount,
-    };
-  });
-
-  if (finalResult.length > 0) {
-    const totalAppliedDiscount = finalResult.reduce((acc, curr) => acc + curr.appliedAmount, 0);
-    console.log(totalAppliedDiscount);
-    return {
-      totalDiscount: totalAppliedDiscount,
-      details: finalResult,
-    };
-  } else {
-    return {
-      totalDiscount: 0,
-      details: [],
-    };
   }
+
+  return {coupenDetails:results, totalDiscount: results.reduce((acc, curr) => acc + curr.finalDiscount, 0)};
 };
 
 module.exports = {
