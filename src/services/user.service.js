@@ -126,8 +126,28 @@ const getUsersDetails = async (req) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const total = await User.countDocuments();
-  const users = await User.aggregate([{ $sort: { _id: -1 } }, { $skip: skip }, { $limit: limit }]);
+
+  const search = req.query.search || '';
+ const matchStage = search
+    ? {
+        address: {
+          $elemMatch: {
+            name: { $regex: search, $options: 'i' },
+          },
+        },
+      }
+    : {};
+
+
+  const total = await User.countDocuments(search ? matchStage : {});
+  
+  const users = await User.aggregate([
+    { $match: search ? matchStage : {} },
+    { $sort: { _id: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+  ]);
+
   return {
     total,
     page,
