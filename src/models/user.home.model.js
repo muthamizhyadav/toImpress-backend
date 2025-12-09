@@ -23,6 +23,13 @@ const bannerSchema = mongoose.Schema(
     },
     bannerType:{
       type: String,
+    },
+    pagePosition:{
+      type: String,
+      default: 'first'
+    },
+    reDirectionUrl:{
+      type: String,
     }
   },
   { timestamp: true }
