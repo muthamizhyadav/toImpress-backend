@@ -247,7 +247,7 @@ const getUserOrders = async (req) => {
       },
     },
     {
-      $unwind: { path: '$delhiveryDetails' },
+      $unwind: { path: '$delhiveryDetails',preserveNullAndEmptyArrays: true},
     },
     { $sort: sort },
     { $skip: skip },
