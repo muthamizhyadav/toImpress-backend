@@ -22,6 +22,7 @@ router
   .delete(auth('manageUsers'), validate(userValidation.deleteUser), userController.deleteUser);
 router.post('/:userId/address', auth(), userController.addUserAddress);
 router.get('/admin/user/details', userController.getUsersDetails);
+router.get('/admin/dashboard/facebook-analytics', userController.getDashBoardWithFaceBookAnalytics);
 
 module.exports = router;
 

@@ -9,7 +9,7 @@ const orderRoute = require('./order.route');
 const reviewRoute = require('./review.route');
 const couponRoute = require('./coupon.route');
 const cartRoute = require('./cart.route');
-
+const pageImpressionRoute = require('./page.impression.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -58,6 +58,10 @@ const defaultRoutes = [
   {
     path: '/delhivery',
     route: require('./delhivery.route'),
+  },
+  {
+    path: '/page-impressions',
+    route: pageImpressionRoute,
   },
 ];
 

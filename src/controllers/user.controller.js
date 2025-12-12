@@ -94,6 +94,11 @@ const getUsersDetails = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).json(users);
 });
 
+const getDashBoardWithFaceBookAnalytics = async () => {
+  const data = await userService.getDashBoardWithFaceBookAnalytics();  
+  return data;
+} 
+
 module.exports = {
   createUser,
   getUsers,
@@ -104,4 +109,5 @@ module.exports = {
   requestOtp,
   verifyOtp,
   getUsersDetails,
+  getDashBoardWithFaceBookAnalytics,
 };
