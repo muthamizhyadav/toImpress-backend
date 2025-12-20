@@ -189,7 +189,7 @@ const getProductByIdAndSimilerProducts = async (req) => {
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  const coupon = await Coupon.findOne({ products: {$in:[id]}, isActive: true });
+  const coupon = await Coupon.find({ products: {$in:[id]}, isActive: true });
   const similarProducts = await Product.find({
     category: product.category,
     _id: { $ne: id },
