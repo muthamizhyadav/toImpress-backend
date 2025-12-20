@@ -15,7 +15,7 @@ const uploadMultipleFiles = async (req) => {
 const getProductsByCategory = async (req) => {
   const categoryName = req.params.categoryName;
   const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 10;
+  const limit = parseInt(req.query.limit, 10) || 1000;
   const price = req.query.price || null;
 
   const skip = (page - 1) * limit;
