@@ -67,17 +67,10 @@ const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, i
 //   const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
 //   return expectedSignature === razorpay_signature;
 // };
-const verifyRazorpaySignature = async ({
-  razorpay_order_id,
-  razorpay_payment_id,
-  razorpay_signature
-}) => {
+const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {
   const body = `${razorpay_order_id}|${razorpay_payment_id}`;
 
-  const expectedSignature = crypto
-    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-    .update(body)
-    .digest('hex');
+  const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
 
   // ❌ Stop if signature mismatch
   if (expectedSignature !== razorpay_signature) {
@@ -97,40 +90,35 @@ const verifyRazorpaySignature = async ({
   if (!user || !user.mobile) return false;
 
   // ✅ Update payment status
-  await RazorPayModel.findOneAndUpdate(
-    { orderId: razorpay_order_id },
-    { status: checkPaymentStatus.status }
-  );
+  await RazorPayModel.findOneAndUpdate({ orderId: razorpay_order_id }, { status: checkPaymentStatus.status });
 
-  // ✅ EXACT payload that matches approved template
   const payload = {
     receiver: `91${user.mobile}`,
     values: {
-      "Body_{{1}}": "Your order has been placed successfully"
-    }
+      'Body_{{1}}': 'Your order has been placed successfully',
+    },
   };
 
-  // ✅ Add media only if valid
   const imageUrl = order.items?.[0]?.image;
-  if (imageUrl && imageUrl.startsWith("https")) {
+  if (imageUrl && imageUrl.startsWith('https')) {
     payload.media_url = imageUrl;
   }
-
-  // ✅ Send WhatsApp template
-  await axios.post(
-    'https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528',
-    payload,
-    {
+  try {
+    await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528', payload, {
       headers: {
-        'Content-Type': 'application/json'
-      }
-    }
-  );
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000,
+    });
+  } catch (error) {
+    console.error('❌ ConvoBox Status:', error.response?.status);
+    console.error('❌ ConvoBox Data:', error.response?.data);
+    console.error('❌ ConvoBox Message:', error.message);
+    throw error;
+  }
 
   return true;
 };
-
-
 
 const getPaymentStatusByOrderId = async (orderId) => {
   try {
