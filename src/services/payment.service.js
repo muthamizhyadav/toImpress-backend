@@ -95,7 +95,7 @@ const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id,
   const FALLBACK_IMAGE = 'https://yourcdn.com/default-order-success.jpg';
 
   const imageUrl =
-    order.items?.[0]?.image && order.items[0].image.startsWith('https') ? order.items[0].image : FALLBACK_IMAGE;
+    order.items?.[0]?.productUrl && order.items[0].productUrl.startsWith('https') ? order.items[0].productUrl : FALLBACK_IMAGE;
 
   const payload = {
     receiver: `91${user.mobile}`,
