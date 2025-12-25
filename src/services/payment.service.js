@@ -51,9 +51,8 @@ const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id,
     if (RZOrders) {
       const findOrders = await Order.findOne({ _id: RZOrders.order });
       if (findOrders) {
-        const user = await User.findOne({ _id: findOrders.userId });
+        const user = await User.findOne({ _id: findOrders.user });
         console.log(user,"USER");
-        
         await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528', {
           receiver: `91${user.mobile}`,
           media_url: `${findOrders.items && findOrders.items.length > 0 ? findOrders.items[0].image : ''}`,
