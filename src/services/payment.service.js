@@ -92,17 +92,20 @@ const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id,
   // ✅ Update payment status
   await RazorPayModel.findOneAndUpdate({ orderId: razorpay_order_id }, { status: checkPaymentStatus.status });
 
+  const FALLBACK_IMAGE = 'https://yourcdn.com/default-order-success.jpg';
+
+  const imageUrl =
+    order.items?.[0]?.image && order.items[0].image.startsWith('https') ? order.items[0].image : FALLBACK_IMAGE;
+
   const payload = {
     receiver: `91${user.mobile}`,
+    media_url: imageUrl,
     values: {
       'Body_{{1}}': 'Your order has been placed successfully',
     },
   };
-
-  const imageUrl = order.items?.[0]?.image;
-  if (imageUrl && imageUrl.startsWith('https')) {
-    payload.media_url = imageUrl;
-  }
+  console.log(order,user,"DETAILS");
+  
   try {
     await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528', payload, {
       headers: {
