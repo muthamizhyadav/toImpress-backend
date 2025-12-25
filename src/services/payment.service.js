@@ -6,16 +6,17 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-const { RazorpayOrder, Order } = require('../models');
+const { RazorpayOrder, Order, User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status');
+const axios = require('axios');
 
 const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, items, localOrderId }, userId) => {
   try {
     if (!localOrderId) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Local order ID is required');
     }
-    
+
     const order = await razorpay.orders.create({
       amount,
       currency,
@@ -45,7 +46,21 @@ const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, i
 const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {
   const body = razorpay_order_id + '|' + razorpay_payment_id;
   let checkPaymentStatus = await getPaymentStatusByOrderId(razorpay_order_id);
-  if(checkPaymentStatus){
+  if (checkPaymentStatus) {
+    const RZOrders = await RazorPayModel.findOne({ orderId: razorpay_order_id });
+    if (RZOrders) {
+      const findOrders = await Order.findOne({ _id: RZOrders.order });
+      if (findOrders) {
+        const user = await User.findOne({ _id: findOrders.userId });
+        await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528', {
+          receiver: `91${user.mobile}`,
+          media_url: `${findOrders.items && findOrders.items.length > 0 ? findOrders.items[0].image : ''}`,
+          values: {
+            'Body_{{1}}': 'Your order has been placed successfully',
+          },
+        });
+      }
+    }
     await RazorPayModel.findOneAndUpdate({ orderId: razorpay_order_id }, { status: checkPaymentStatus.status });
   }
   const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
@@ -58,7 +73,7 @@ const getPaymentStatusByOrderId = async (orderId) => {
 
     if (!payments.items || payments.items.length === 0) {
       return { success: false, message: 'No payments found for this order' };
-    }    
+    }
     const payment = payments.items[0];
     return {
       success: true,
@@ -88,8 +103,8 @@ const getPaymentStatusByReceipt = async (receipt) => {
     if (paymentStatus.payment_id) {
       await RazorPayModel.findOneAndUpdate({ orderId: order.id }, { status: paymentStatus.status });
     }
-     console.log('paymentStatus', paymentStatus);
-    return paymentStatus
+    console.log('paymentStatus', paymentStatus);
+    return paymentStatus;
   } catch (error) {
     console.error('Error fetching payment status by receipt:', error);
     throw error;
