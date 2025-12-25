@@ -72,7 +72,6 @@ const verifyRazorpaySignature = async ({
   razorpay_payment_id,
   razorpay_signature
 }) => {
-
   const body = `${razorpay_order_id}|${razorpay_payment_id}`;
 
   const expectedSignature = crypto
@@ -80,6 +79,7 @@ const verifyRazorpaySignature = async ({
     .update(body)
     .digest('hex');
 
+  // ❌ Stop if signature mismatch
   if (expectedSignature !== razorpay_signature) {
     return false;
   }
@@ -96,25 +96,27 @@ const verifyRazorpaySignature = async ({
   const user = await User.findById(order.user);
   if (!user || !user.mobile) return false;
 
+  // ✅ Update payment status
   await RazorPayModel.findOneAndUpdate(
     { orderId: razorpay_order_id },
     { status: checkPaymentStatus.status }
   );
 
+  // ✅ EXACT payload that matches approved template
   const payload = {
     receiver: `91${user.mobile}`,
     values: {
-      "Body_{{1}}": user.name || "Customer",
-      "Body_{{2}}": order._id.toString(),
-      "Body_{{3}}": order.items.length.toString(),
-      "Body_{{4}}": order.totalAmount.toString()
+      "Body_{{1}}": "Your order has been placed successfully"
     }
   };
 
-  if (order.items?.[0]?.image) {
-    payload.media_url = order.items[0].image;
+  // ✅ Add media only if valid
+  const imageUrl = order.items?.[0]?.image;
+  if (imageUrl && imageUrl.startsWith("https")) {
+    payload.media_url = imageUrl;
   }
 
+  // ✅ Send WhatsApp template
   await axios.post(
     'https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528',
     payload,
@@ -127,6 +129,7 @@ const verifyRazorpaySignature = async ({
 
   return true;
 };
+
 
 
 const getPaymentStatusByOrderId = async (orderId) => {
