@@ -43,30 +43,91 @@ const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, i
   }
 };
 
-const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {
-  const body = razorpay_order_id + '|' + razorpay_payment_id;
-  let checkPaymentStatus = await getPaymentStatusByOrderId(razorpay_order_id);
-  if (checkPaymentStatus) {
-    const RZOrders = await RazorPayModel.findOne({ orderId: razorpay_order_id });
-    if (RZOrders) {
-      const findOrders = await Order.findOne({ _id: RZOrders.order });
-      if (findOrders) {
-        const user = await User.findOne({ _id: findOrders.user });
-        console.log(user,"USER");
-        await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528', {
-          receiver: `91${user.mobile}`,
-          media_url: `${findOrders.items && findOrders.items.length > 0 ? findOrders.items[0].image : ''}`,
-          values: {
-            'Body_{{1}}': 'Your order has been placed successfully',
-          },
-        });
+// const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {
+//   const body = razorpay_order_id + '|' + razorpay_payment_id;
+//   let checkPaymentStatus = await getPaymentStatusByOrderId(razorpay_order_id);
+//   if (checkPaymentStatus) {
+//     const RZOrders = await RazorPayModel.findOne({ orderId: razorpay_order_id });
+//     if (RZOrders) {
+//       const findOrders = await Order.findOne({ _id: RZOrders.order });
+//       if (findOrders) {
+//         const user = await User.findOne({ _id: findOrders.user });
+//         console.log(user,"USER");
+//         await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528', {
+//           receiver: `91${user.mobile}`,
+//           media_url: `${findOrders.items && findOrders.items.length > 0 ? findOrders.items[0].image : ''}`,
+//           values: {
+//             'Body_{{1}}': 'Your order has been placed successfully',
+//           },
+//         });
+//       }
+//     }
+//     await RazorPayModel.findOneAndUpdate({ orderId: razorpay_order_id }, { status: checkPaymentStatus.status });
+//   }
+//   const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
+//   return expectedSignature === razorpay_signature;
+// };
+const verifyRazorpaySignature = async ({
+  razorpay_order_id,
+  razorpay_payment_id,
+  razorpay_signature
+}) => {
+
+  const body = `${razorpay_order_id}|${razorpay_payment_id}`;
+
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(body)
+    .digest('hex');
+
+  if (expectedSignature !== razorpay_signature) {
+    return false;
+  }
+
+  const checkPaymentStatus = await getPaymentStatusByOrderId(razorpay_order_id);
+  if (!checkPaymentStatus) return false;
+
+  const rzOrder = await RazorPayModel.findOne({ orderId: razorpay_order_id });
+  if (!rzOrder) return false;
+
+  const order = await Order.findById(rzOrder.order);
+  if (!order) return false;
+
+  const user = await User.findById(order.user);
+  if (!user || !user.mobile) return false;
+
+  await RazorPayModel.findOneAndUpdate(
+    { orderId: razorpay_order_id },
+    { status: checkPaymentStatus.status }
+  );
+
+  const payload = {
+    receiver: `91${user.mobile}`,
+    values: {
+      "Body_{{1}}": user.name || "Customer",
+      "Body_{{2}}": order._id.toString(),
+      "Body_{{3}}": order.items.length.toString(),
+      "Body_{{4}}": order.totalAmount.toString()
+    }
+  };
+
+  if (order.items?.[0]?.image) {
+    payload.media_url = order.items[0].image;
+  }
+
+  await axios.post(
+    'https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528',
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json'
       }
     }
-    await RazorPayModel.findOneAndUpdate({ orderId: razorpay_order_id }, { status: checkPaymentStatus.status });
-  }
-  const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
-  return expectedSignature === razorpay_signature;
+  );
+
+  return true;
 };
+
 
 const getPaymentStatusByOrderId = async (orderId) => {
   try {
