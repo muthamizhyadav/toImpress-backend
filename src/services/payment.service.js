@@ -101,10 +101,10 @@ const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id,
     receiver: `91${user.mobile}`,
     media_url: imageUrl,
     values: {
-      'Body_{{1}}': 'Your order has been placed successfully',
+      'Body_{{1}}': user?.address[0]?.name ?? '',
+      'Body_{{2}}':order?.orderNumber ?? ''
     },
   };
-  console.log(order,user,"DETAILS");
   
   try {
     await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/923351424193528', payload, {
