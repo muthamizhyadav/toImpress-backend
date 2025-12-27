@@ -2,6 +2,7 @@ const axios = require('axios');
 const { DelhiveryOrder, Order } = require('../models');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status');
+const { log } = require('winston');
 
 const DELHIVERY_API_KEY = process.env.DELHIVERY_API_KEY;
 const DELHIVERY_BASE_URL = 'https://track.delhivery.com';
@@ -85,11 +86,65 @@ const createShipment = async (shipmentData, userId) => {
       timeout: 30000,
     });
 
-    console.log(response.data.packages, 'BEFORE IF');
+    console.log(response.data, 'BEFORE IF');
 
-    // Check if packages array exists in response (regardless of success status)
     if (response.data.packages && response.data.packages.length > 0) {
-      console.log(response.data.packages, 'IF');
+      if (response.data.packages && response.data.packages.length) {
+        if (response.data.packages[0].status == 'Fail') {
+          const fetchOrders = await Order.findById(shipmentData.shipments[0].orderId);
+          const payload = {
+            receiver: `91${shipmentData.shipments[0].phone}`,
+            values: {
+              'Body_{{1}}': shipmentData.shipments[0].name ?? '',
+              'Body_{{2}}': fetchOrders?.orderNumber ?? '',
+            },
+          };
+          try {
+            let res = await axios.post(
+              'https://api.convobox.in/api/templates/webhooks/855353833790259/1613778769795791',
+              payload,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                timeout: 10000,
+              }
+            );
+            console.log(res.data);
+          } catch (error) {
+            console.error('❌ ConvoBox Status:', error.response?.status);
+            console.error('❌ ConvoBox Data:', error.response?.data);
+            console.error('❌ ConvoBox Message:', error.message);
+            throw error;
+          }
+        } else {
+          console.log(response.data, 'Success response');
+          if (response.data.packages && response.data.packages.length) {
+            const waybill = response.data.packages[0].waybill;
+            const fetchOrders = await Order.findById(shipmentData.shipments[0].orderId);
+            const payload = {
+              receiver: `91${shipmentData.shipments[0].phone}`,
+              values: {
+                'Body_{{1}}': shipmentData.shipments[0].name ?? '',
+                'Body_{{2}}': fetchOrders?.orderNumber ?? '',
+                'Body_{{3}}': waybill ?? '',
+                'Button_{{1}}': waybill ?? '',
+              },
+            };
+            let res = await axios.post(
+              'https://api.convobox.in/api/templates/webhooks/855353833790259/1156865039553201',
+              payload,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                timeout: 10000,
+              }
+            );
+            console.log(res.data,"SUCCESS MESSAGE");
+          }
+        }
+      }
 
       const ordersToInsert = response.data.packages.map((pkg, index) => {
         // Determine if the package was successful or failed
@@ -231,7 +286,6 @@ const getRegisteredWarehouses = async () => {
 };
 
 const getOrders = async (req, res) => {
- 
   const { page = 1, limit = 10, status, fromDate, toDate, search } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -253,7 +307,7 @@ const getOrders = async (req, res) => {
         as: 'userDetails',
       },
     },
-      {
+    {
       $lookup: {
         from: 'delhiveryorders',
         localField: '_id',
