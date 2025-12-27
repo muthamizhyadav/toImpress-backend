@@ -10,6 +10,7 @@ const { RazorpayOrder, Order, User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status');
 const axios = require('axios');
+const { log } = require('util');
 
 const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, items, localOrderId }, userId) => {
   try {
@@ -107,12 +108,14 @@ const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id,
   };
   
   try {
-    await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/1431754008567647', payload, {
+   let res = await axios.post('https://api.convobox.in/api/templates/webhooks/855353833790259/1431754008567647', payload, {
       headers: {
         'Content-Type': 'application/json',
       },
       timeout: 10000,
     });
+    console.log(res.data);
+    
   } catch (error) {
     console.error('❌ ConvoBox Status:', error.response?.status);
     console.error('❌ ConvoBox Data:', error.response?.data);
