@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { DelhiveryOrder, Order } = require('../models');
+const { DelhiveryOrder, Order,User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const httpStatus = require('http-status');
 const { log } = require('winston');
@@ -141,7 +141,7 @@ const createShipment = async (shipmentData, userId) => {
                 timeout: 10000,
               }
             );
-            console.log(res.data,"SUCCESS MESSAGE");
+            console.log(res.data, 'SUCCESS MESSAGE');
           }
         }
       }
@@ -284,59 +284,83 @@ const getRegisteredWarehouses = async () => {
     throw error;
   }
 };
-
 const getOrders = async (req, res) => {
-  const { page = 1, limit = 10, status, fromDate, toDate, search } = req.query;
-  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const { page = 1, limit = 10, search } = req.query;
 
-  const GetOrders = await Order.aggregate([
-    {
-      $lookup: {
-        from: 'razorpayorders',
-        localField: '_id',
-        foreignField: 'order',
-        as: 'paymentDetails',
-      },
-    },
-    { $unwind: { path: '$paymentDetails' } },
-    {
-      $lookup: {
-        from: 'users',
-        localField: 'user',
-        foreignField: '_id',
-        as: 'userDetails',
-      },
-    },
-    {
-      $lookup: {
-        from: 'delhiveryorders',
-        localField: '_id',
-        foreignField: 'orderId',
-        as: 'shipment',
-      },
-    },
-    { $unwind: { path: '$shipment', preserveNullAndEmptyArrays: true } },
-    { $unwind: { path: '$userDetails', preserveNullAndEmptyArrays: true } },
+  const pageNumber = parseInt(page);
+  const limitNumber = parseInt(limit);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  let matchStage = {};
+
+  if (search) {
+    // 🔎 Find matching users based on your DB structure
+    const users = await User.find({
+      $or: [
+        { mobile: { $regex: search, $options: "i" } },
+        { "address.name": { $regex: search, $options: "i" } },
+        { "address.phone": { $regex: search, $options: "i" } },
+      ],
+    }).select("_id");
+
+    const userIds = users.map((u) => u._id);
+
+    matchStage = {
+      $or: [
+        { _id: { $regex: search, $options: "i" } },
+        { orderNumber: { $regex: search, $options: "i" } },
+        { user: { $in: userIds } },
+      ],
+    };
+  }
+
+  const totalCount = await Order.countDocuments(matchStage);
+
+  const orders = await Order.aggregate([
+    { $match: matchStage },
     { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limitNumber },
+
     {
-      $facet: {
-        data: [{ $skip: skip }, { $limit: parseInt(limit) }],
-        totalCount: [{ $count: 'count' }],
+      $lookup: {
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "userDetails",
       },
     },
+    { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+
+    {
+      $lookup: {
+        from: "razorpayorders",
+        localField: "_id",
+        foreignField: "order",
+        as: "paymentDetails",
+      },
+    },
+    { $unwind: { path: "$paymentDetails", preserveNullAndEmptyArrays: true } },
+
+    {
+      $lookup: {
+        from: "delhiveryorders",
+        localField: "_id",
+        foreignField: "orderId",
+        as: "shipment",
+      },
+    },
+    { $unwind: { path: "$shipment", preserveNullAndEmptyArrays: true } },
   ]);
-  const data = GetOrders[0]?.data || [];
-  const totalCount = GetOrders[0]?.totalCount[0]?.count || 0;
 
   return {
     success: true,
-    page: parseInt(page),
-    limit: parseInt(limit),
-    totalPages: Math.ceil(totalCount / limit),
+    page: pageNumber,
+    limit: limitNumber,
+    totalPages: Math.ceil(totalCount / limitNumber),
     totalCount,
-    data,
+    data: orders,
   };
-  // return GetOrders
 };
 
 module.exports = {
