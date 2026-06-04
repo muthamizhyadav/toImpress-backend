@@ -142,9 +142,45 @@ async function sendOtp(mobile, otp = null) {
  * @param {string} storedOtp - Stored OTP for comparison
  * @returns {boolean} Verification result
  */
-const verifyOtp = (mobile, otp, storedOtp) => {
-  return otp === storedOtp;
-};
+async function verifyOtp(mobile, enteredOtp) {
+  try {
+    const otpRecord = await OtpModel.findOne({ mobile });
+
+    if (!otpRecord) {
+      return {
+        success: false,
+        message: 'OTP not found',
+      };
+    }
+
+    // Check expiry
+    if (new Date() > otpRecord.expiresAt) {
+      return {
+        success: false,
+        message: 'OTP expired',
+      };
+    }
+
+    // Compare OTP
+    if (String(otpRecord.otp) !== String(enteredOtp)) {
+      return {
+        success: false,
+        message: 'Invalid OTP',
+      };
+    }
+
+    // Remove OTP after successful verification
+    await OtpModel.deleteOne({ mobile });
+
+    return {
+      success: true,
+      message: 'OTP verified successfully',
+    };
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
 
 module.exports = { 
   sendOtp, 
