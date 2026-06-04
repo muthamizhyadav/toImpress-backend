@@ -27,7 +27,7 @@ async function sendOtp(mobile, otp = null) {
       throw new Error('Invalid mobile number. Please provide a valid 10-digit Indian mobile number.');
     }
 
-    const message = `Your To Impress login OTP is ${otp}. Do not share this OTP with anyone.`;
+    const message = `Your OTP for login to Ponpreatha Textiles at toimpressclothing.com is ${otp}. Valid for 10 minutes. Do not share with anyone.`;
     
     // Try Fast2SMS first if API key is available
     if (config.fast2sms && config.fast2sms.apiKey) {
@@ -73,7 +73,7 @@ async function sendOtp(mobile, otp = null) {
           return {
             success: true,
             message: "OTP sent successfully via Fast2SMS",
-            otp: config.env === 'development' ? otp : undefined, // Only return OTP in dev mode
+            otp: config.env === 'development' ? otp : undefined, 
             mobile: mobile,
             fast2sms_response: response.data,
             provider: 'fast2sms'
@@ -91,9 +91,7 @@ async function sendOtp(mobile, otp = null) {
           throw new Error(`Failed to send OTP via SMS: ${apiError.response?.data?.message || apiError.message}`);
         }
         
-        // In development, fall back to console logging
-        console.log(`Fast2SMS failed, falling back to development mode`);
-        console.log(`OTP for ${mobile}: ${otp} (Fast2SMS error: ${apiError.message})`);
+   
         return {
           success: true,
           message: "OTP sent successfully (development fallback)",

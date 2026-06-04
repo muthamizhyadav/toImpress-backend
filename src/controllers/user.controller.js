@@ -21,7 +21,7 @@ const requestOtp = catchAsync(async (req, res) => {
   // Generate OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   otpStore[mobile] = { otp, expires: Date.now() + 5 * 60 * 1000 };
-  let otpresponse = await sendOtp(mobile, otp);
+  let otpresponse = await sendOtp(mobile);
   res.status(httpStatus.OK).json(otpresponse);
 });
 
