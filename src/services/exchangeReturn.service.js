@@ -5,7 +5,7 @@ const ApiError = require('../utils/ApiError');
 // ==================== EXCHANGE ====================
 
 const createExchange = async (req) => {
-  const { orderId, orderItemId, newSize, reason, description, images } = req.body;
+  const { orderId, orderItemId, newSize, currentSize, reason, description, images } = req.body;
   const userId = req.user.id;
 
   const order = await Order.findById(orderId);
@@ -31,7 +31,7 @@ const createExchange = async (req) => {
     product: item.product,
     productTitle: item.productTitle,
     productImage: item.productUrl || '',
-    currentSize: item.selectedSize,
+    currentSize: currentSize || item.selectedSize || '',
     newSize,
     reason,
     description: description || '',

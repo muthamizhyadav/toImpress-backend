@@ -6,6 +6,7 @@ const createExchange = {
     orderItemId: Joi.string().required(),
     type: Joi.string().allow('exchange', 'return'),
     newSize: Joi.string().required(),
+    currentSize: Joi.string().allow(''),
     reason: Joi.string().valid('Size Too Small', 'Size Too Large', 'Defective Product', 'Wrong Product Received', 'Other').required(),
     description: Joi.string().allow(''),
     images: Joi.array().items(Joi.string()),
