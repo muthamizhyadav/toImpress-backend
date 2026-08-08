@@ -15,7 +15,9 @@ const { log } = require('util');
 const createRazorpayOrder = async ({ amount, currency = 'INR', receipt, notes, items, localOrderId }, userId) => {
   try {
     if (!localOrderId) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Local order ID is required');
+      if (!receipt) {
+        throw new ApiError(httpStatus.BAD_REQUEST, 'Receipt is required when local order ID is not provided');
+      }
     }
 
     const order = await razorpay.orders.create({
