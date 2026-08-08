@@ -706,11 +706,8 @@ const scheduleReturnPickup = async (req) => {
   const result = await createShipment(shipmentData, req.user.id);
   const pkg = result && result.packages && result.packages[0];
   if (!pkg || !pkg.waybill) {
-    console.error('Return pickup raw response:', JSON.stringify(result));
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      pkg && pkg.remarks ? pkg.remarks.join(', ') : (result && result.apiError ? JSON.stringify(result.apiError) : result && result.error ? result.error : 'Return pickup creation failed')
-    );
+    console.error('Return pickup raw response:', JSON.stringify(result, null, 2));
+    throw new ApiError(httpStatus.BAD_REQUEST, `Return pickup failed: ${JSON.stringify(result)}`);
   }
 
   returnReq.pickupWaybill = pkg.waybill;
