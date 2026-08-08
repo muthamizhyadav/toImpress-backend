@@ -31,6 +31,10 @@ router
   .route('/exchanges/:id/pay')
   .post(auth(), validate(exchangeReturnValidation.payExchangeCharge), exchangeReturnController.payExchangeCharge);
 
+router
+  .route('/exchanges/:id/track')
+  .get(auth(), validate(exchangeReturnValidation.adminExchangeTrack), exchangeReturnController.checkExchangeShipment);
+
 // Return routes
 router
   .route('/returns')
@@ -49,6 +53,10 @@ router
     validate(exchangeReturnValidation.updateReturnStatus),
     exchangeReturnController.updateReturnStatus
   );
+
+router
+  .route('/returns/:id/track')
+  .get(auth(), validate(exchangeReturnValidation.adminExchangeTrack), exchangeReturnController.checkReturnShipment);
 
 // File upload route
 router.route('/upload/images').post(auth(), upload.array('images', 5), exchangeReturnController.uploadImages);

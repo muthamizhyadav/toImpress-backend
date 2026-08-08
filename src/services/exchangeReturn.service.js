@@ -639,6 +639,9 @@ const checkExchangeShipment = async (req) => {
   const { id } = req.params;
   const exchange = await Exchange.findById(id);
   if (!exchange) throw new ApiError(httpStatus.NOT_FOUND, 'Exchange request not found');
+  if (req.user.role !== 'admin' && exchange.user !== req.user.id) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
+  }
 
   const isReplacement = ['replacement_dispatched', 'exchange_completed'].includes(exchange.status);
   const waybill = isReplacement ? exchange.replacementWaybill : exchange.pickupWaybill;
@@ -722,6 +725,9 @@ const checkReturnShipment = async (req) => {
   const { id } = req.params;
   const returnReq = await Return.findById(id);
   if (!returnReq) throw new ApiError(httpStatus.NOT_FOUND, 'Return request not found');
+  if (req.user.role !== 'admin' && returnReq.user !== req.user.id) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
+  }
   if (!returnReq.pickupWaybill) throw new ApiError(httpStatus.BAD_REQUEST, 'No waybill assigned yet');
 
   const tracking = await trackShipment(returnReq.pickupWaybill);
