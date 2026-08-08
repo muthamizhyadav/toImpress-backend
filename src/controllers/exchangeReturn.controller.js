@@ -37,6 +37,26 @@ const getMyReturns = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(result);
 });
 
+const getAdminExchanges = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.getAdminExchanges(req);
+  res.status(httpStatus.OK).send(result);
+});
+
+const getAdminReturns = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.getAdminReturns(req);
+  res.status(httpStatus.OK).send(result);
+});
+
+const adminPayExchange = catchAsync(async (req, res) => {
+  const exchange = await exchangeReturnService.adminPayExchange(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Payment recorded', data: exchange });
+});
+
+const adminProcessRefund = catchAsync(async (req, res) => {
+  const returnReq = await exchangeReturnService.adminProcessRefund(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Refund initiated', data: returnReq });
+});
+
 const getReturn = catchAsync(async (req, res) => {
   const returnReq = await exchangeReturnService.getReturnById(req);
   res.status(httpStatus.OK).send({ success: true, data: returnReq });
@@ -63,4 +83,8 @@ module.exports = {
   getReturn,
   updateReturnStatus,
   uploadImages,
+  getAdminExchanges,
+  getAdminReturns,
+  adminPayExchange,
+  adminProcessRefund,
 };

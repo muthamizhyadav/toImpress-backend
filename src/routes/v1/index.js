@@ -67,6 +67,10 @@ const defaultRoutes = [
     path: '/exchange-return',
     route: require('./exchangeReturn.route'),
   },
+  {
+    path: '/',
+    route: require('./exchangeReturn.route').adminExchangeReturnRouter,
+  },
 ];
 
 const devRoutes = [

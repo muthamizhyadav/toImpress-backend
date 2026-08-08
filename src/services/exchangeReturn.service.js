@@ -1,6 +1,67 @@
 const httpStatus = require('http-status');
-const { Exchange, Return, Order } = require('../models');
+const { Exchange, Return, Order, User } = require('../models');
 const ApiError = require('../utils/ApiError');
+
+const EXCHANGE_STATUS_MAP = {
+  requested: 'Exchange Requested',
+  under_review: 'Under Review',
+  approved: 'Approved',
+  payment_pending: 'Payment Pending',
+  payment_completed: 'Payment Completed',
+  pickup_scheduled: 'Pickup Scheduled',
+  product_received: 'Product Received at Warehouse',
+  replacement_dispatched: 'Replacement Dispatched',
+  exchange_completed: 'Exchange Completed',
+};
+
+const RETURN_STATUS_MAP = {
+  requested: 'Return Requested',
+  under_review: 'Under Review',
+  approved: 'Approved',
+  payment_pending: 'Payment Pending',
+  pickup_scheduled: 'Pickup Scheduled',
+  product_received: 'Product Received',
+  quality_inspection: 'Quality Inspection',
+  refund_initiated: 'Refund Initiated',
+  refund_credited: 'Refund Credited',
+  return_completed: 'Return Completed',
+};
+
+const toLabel = (map, value) => map[value] || value;
+const toRaw = (map, value) => {
+  if (map[value]) return value;
+  const found = Object.entries(map).find(([, label]) => label === value);
+  return found ? found[0] : value;
+};
+
+const buildUserMap = async (userIds) => {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return {};
+  const users = await User.find({ _id: { $in: ids } })
+    .select('name mobile')
+    .lean();
+  return users.reduce((acc, u) => {
+    acc[u._id] = u;
+    return acc;
+  }, {});
+};
+
+const getPaymentStatus = (status) => {
+  if (
+    ['payment_completed', 'pickup_scheduled', 'product_received', 'replacement_dispatched', 'exchange_completed'].includes(
+      status
+    )
+  )
+    return 'completed';
+  if (['approved', 'payment_pending'].includes(status)) return 'pending';
+  return undefined;
+};
+
+const getRefundStatus = (status) => {
+  if (status === 'refund_initiated') return 'initiated';
+  if (['refund_credited', 'return_completed'].includes(status)) return 'credited';
+  return undefined;
+};
 
 // ==================== EXCHANGE ====================
 
@@ -59,7 +120,14 @@ const getMyExchanges = async (req) => {
   return {
     success: true,
     data: exchanges,
-    pagination: { total, totalPages, currentPage: page, itemsPerPage: limit, hasNextPage: page < totalPages, hasPreviousPage: page > 1 },
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
   };
 };
 
@@ -75,13 +143,14 @@ const getExchangeById = async (req) => {
 
 const updateExchangeStatus = async (req) => {
   const { id } = req.params;
-  const { status, adminNotes } = req.body;
+  const { status, adminNotes, note } = req.body;
 
   const exchange = await Exchange.findById(id);
   if (!exchange) throw new ApiError(httpStatus.NOT_FOUND, 'Exchange request not found');
 
-  exchange.status = status;
+  exchange.status = toRaw(EXCHANGE_STATUS_MAP, status);
   if (adminNotes) exchange.adminNotes = adminNotes;
+  if (note) exchange.adminNotes = note;
   await exchange.save();
   return exchange;
 };
@@ -160,7 +229,14 @@ const getMyReturns = async (req) => {
   return {
     success: true,
     data: returns,
-    pagination: { total, totalPages, currentPage: page, itemsPerPage: limit, hasNextPage: page < totalPages, hasPreviousPage: page > 1 },
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
   };
 };
 
@@ -176,14 +252,189 @@ const getReturnById = async (req) => {
 
 const updateReturnStatus = async (req) => {
   const { id } = req.params;
-  const { status, refundAmount, adminNotes } = req.body;
+  const { status, refundAmount, adminNotes, note } = req.body;
 
   const returnReq = await Return.findById(id);
   if (!returnReq) throw new ApiError(httpStatus.NOT_FOUND, 'Return request not found');
 
-  returnReq.status = status;
+  returnReq.status = toRaw(RETURN_STATUS_MAP, status);
   if (refundAmount !== undefined) returnReq.refundAmount = refundAmount;
   if (adminNotes) returnReq.adminNotes = adminNotes;
+  if (note) returnReq.adminNotes = note;
+  await returnReq.save();
+  return returnReq;
+};
+
+const getAdminExchanges = async (req) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const filter = {};
+
+  const { status, search } = req.query;
+  if (status) filter.status = toRaw(EXCHANGE_STATUS_MAP, status);
+
+  if (search) {
+    const userMatches = await User.find({
+      $or: [{ name: { $regex: search, $options: 'i' } }, { mobile: { $regex: search, $options: 'i' } }],
+    })
+      .select('_id')
+      .lean();
+    const userFilter = userMatches.map((u) => u._id);
+    filter.$or = [
+      { orderId: { $regex: search, $options: 'i' } },
+      { orderItemId: { $regex: search, $options: 'i' } },
+      { productTitle: { $regex: search, $options: 'i' } },
+      { _id: { $regex: search, $options: 'i' } },
+    ];
+    if (userFilter.length) filter.$or.push({ user: { $in: userFilter } });
+  }
+
+  const exchanges = await Exchange.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+  const total = await Exchange.countDocuments(filter);
+  const totalPages = Math.ceil(total / limit);
+  const users = await buildUserMap(exchanges.map((e) => e.user));
+
+  const data = exchanges.map((e) => {
+    const u = users[e.user] || {};
+    return {
+      requestId: e._id,
+      _id: e._id,
+      orderId: e.orderId,
+      orderItemId: e.orderItemId,
+      userName: u.name || 'N/A',
+      userMobile: u.mobile || '',
+      user: e.user,
+      productName: e.productTitle,
+      productImage: e.productImage || '',
+      selectedSize: e.currentSize,
+      currentSize: e.currentSize,
+      newSize: e.newSize,
+      reason: e.reason,
+      description: e.description,
+      images: e.images || [],
+      status: toLabel(EXCHANGE_STATUS_MAP, e.status),
+      rawStatus: e.status,
+      adminNote: e.adminNotes || '',
+      paymentStatus: getPaymentStatus(e.status),
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    };
+  });
+
+  return {
+    success: true,
+    data,
+    total,
+    totalPages,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
+};
+
+const getAdminReturns = async (req) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const filter = {};
+
+  const { status, search } = req.query;
+  if (status) filter.status = toRaw(RETURN_STATUS_MAP, status);
+
+  if (search) {
+    const userMatches = await User.find({
+      $or: [{ name: { $regex: search, $options: 'i' } }, { mobile: { $regex: search, $options: 'i' } }],
+    })
+      .select('_id')
+      .lean();
+    const userFilter = userMatches.map((u) => u._id);
+    filter.$or = [
+      { orderId: { $regex: search, $options: 'i' } },
+      { orderItemId: { $regex: search, $options: 'i' } },
+      { productTitle: { $regex: search, $options: 'i' } },
+      { _id: { $regex: search, $options: 'i' } },
+    ];
+    if (userFilter.length) filter.$or.push({ user: { $in: userFilter } });
+  }
+
+  const returns = await Return.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+  const total = await Return.countDocuments(filter);
+  const totalPages = Math.ceil(total / limit);
+  const users = await buildUserMap(returns.map((r) => r.user));
+
+  const data = returns.map((r) => {
+    const u = users[r.user] || {};
+    return {
+      requestId: r._id,
+      _id: r._id,
+      orderId: r.orderId,
+      orderItemId: r.orderItemId,
+      userName: u.name || 'N/A',
+      userMobile: u.mobile || '',
+      user: r.user,
+      productName: r.productTitle,
+      productImage: r.productImage || '',
+      selectedSize: r.currentSize || '',
+      reason: r.reason,
+      description: r.description,
+      images: r.images || [],
+      status: toLabel(RETURN_STATUS_MAP, r.status),
+      rawStatus: r.status,
+      adminNote: r.adminNotes || '',
+      refundAmount: r.refundAmount,
+      refundMethod: r.refundMethod,
+      refundStatus: getRefundStatus(r.status),
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  });
+
+  return {
+    success: true,
+    data,
+    total,
+    totalPages,
+    pagination: {
+      total,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
+};
+
+const adminPayExchange = async (req) => {
+  const { id } = req.params;
+  const exchange = await Exchange.findById(id);
+  if (!exchange) throw new ApiError(httpStatus.NOT_FOUND, 'Exchange request not found');
+  if (exchange.status !== 'payment_pending') {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Exchange is not awaiting payment');
+  }
+  exchange.status = 'payment_completed';
+  exchange.paymentId = exchange.paymentId || `admin_${Date.now()}`;
+  exchange.paymentOrderId = exchange.paymentOrderId || `admin_order_${Date.now()}`;
+  await exchange.save();
+  return exchange;
+};
+
+const adminProcessRefund = async (req) => {
+  const { id } = req.params;
+  const { method, amount } = req.body;
+
+  const returnReq = await Return.findById(id);
+  if (!returnReq) throw new ApiError(httpStatus.NOT_FOUND, 'Return request not found');
+
+  returnReq.status = 'refund_initiated';
+  if (method) returnReq.refundMethod = method;
+  if (amount !== undefined) returnReq.refundAmount = amount;
   await returnReq.save();
   return returnReq;
 };
@@ -209,4 +460,8 @@ module.exports = {
   getReturnById,
   updateReturnStatus,
   uploadExchangeReturnImages,
+  getAdminExchanges,
+  getAdminReturns,
+  adminPayExchange,
+  adminProcessRefund,
 };

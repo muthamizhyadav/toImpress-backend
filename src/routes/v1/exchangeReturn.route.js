@@ -14,12 +14,18 @@ router
   .post(auth(), validate(exchangeReturnValidation.createExchange), exchangeReturnController.createExchange)
   .get(auth(), validate(exchangeReturnValidation.getMyExchanges), exchangeReturnController.getMyExchanges);
 
-router.route('/exchanges/my-requests').get(auth(), validate(exchangeReturnValidation.getMyExchanges), exchangeReturnController.getMyExchanges);
+router
+  .route('/exchanges/my-requests')
+  .get(auth(), validate(exchangeReturnValidation.getMyExchanges), exchangeReturnController.getMyExchanges);
 
 router
   .route('/exchanges/:id')
   .get(auth(), validate(exchangeReturnValidation.getExchange), exchangeReturnController.getExchange)
-  .patch(auth('manageOrders'), validate(exchangeReturnValidation.updateExchangeStatus), exchangeReturnController.updateExchangeStatus);
+  .patch(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.updateExchangeStatus),
+    exchangeReturnController.updateExchangeStatus
+  );
 
 router
   .route('/exchanges/:id/pay')
@@ -31,16 +37,68 @@ router
   .post(auth(), validate(exchangeReturnValidation.createReturn), exchangeReturnController.createReturn)
   .get(auth(), validate(exchangeReturnValidation.getMyReturns), exchangeReturnController.getMyReturns);
 
-router.route('/returns/my-requests').get(auth(), validate(exchangeReturnValidation.getMyReturns), exchangeReturnController.getMyReturns);
+router
+  .route('/returns/my-requests')
+  .get(auth(), validate(exchangeReturnValidation.getMyReturns), exchangeReturnController.getMyReturns);
 
 router
   .route('/returns/:id')
   .get(auth(), validate(exchangeReturnValidation.getReturn), exchangeReturnController.getReturn)
-  .patch(auth('manageOrders'), validate(exchangeReturnValidation.updateReturnStatus), exchangeReturnController.updateReturnStatus);
+  .patch(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.updateReturnStatus),
+    exchangeReturnController.updateReturnStatus
+  );
 
 // File upload route
-router
-  .route('/upload/images')
-  .post(auth(), upload.array('images', 5), exchangeReturnController.uploadImages);
+router.route('/upload/images').post(auth(), upload.array('images', 5), exchangeReturnController.uploadImages);
+
+// ===== Admin management endpoints (mounted at top-level /v1 for the admin panel) =====
+const adminRouter = express.Router();
+
+adminRouter
+  .route('/exchange-requests')
+  .get(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.getAdminRequests),
+    exchangeReturnController.getAdminExchanges
+  );
+
+adminRouter
+  .route('/exchange-requests/:id/status')
+  .put(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.updateAdminExchangeStatus),
+    exchangeReturnController.updateExchangeStatus
+  );
+
+adminRouter
+  .route('/exchange-requests/:id/payment')
+  .post(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.adminPayExchange),
+    exchangeReturnController.adminPayExchange
+  );
+
+adminRouter
+  .route('/return-requests')
+  .get(auth('manageOrders'), validate(exchangeReturnValidation.getAdminRequests), exchangeReturnController.getAdminReturns);
+
+adminRouter
+  .route('/return-requests/:id/status')
+  .put(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.updateAdminReturnStatus),
+    exchangeReturnController.updateReturnStatus
+  );
+
+adminRouter
+  .route('/return-requests/:id/refund')
+  .post(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.adminProcessRefund),
+    exchangeReturnController.adminProcessRefund
+  );
 
 module.exports = router;
+module.exports.adminExchangeReturnRouter = adminRouter;
