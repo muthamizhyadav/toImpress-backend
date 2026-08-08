@@ -4,6 +4,7 @@ const createExchange = {
   body: Joi.object().keys({
     orderId: Joi.string().required(),
     orderItemId: Joi.string().required(),
+    type: Joi.string().allow('exchange', 'return'),
     newSize: Joi.string().required(),
     reason: Joi.string().valid('Size Too Small', 'Size Too Large', 'Defective Product', 'Wrong Product Received', 'Other').required(),
     description: Joi.string().allow(''),
@@ -53,6 +54,7 @@ const createReturn = {
   body: Joi.object().keys({
     orderId: Joi.string().required(),
     orderItemId: Joi.string().required(),
+    type: Joi.string().allow('exchange', 'return'),
     reason: Joi.string().valid('Damaged Product', 'Wrong Product Received', 'Quality Issue', 'Other').required(),
     description: Joi.string().allow(''),
     images: Joi.array().items(Joi.string()).min(1).required(),
