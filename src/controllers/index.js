@@ -9,3 +9,4 @@ module.exports.cartController = require('./cart.controller');
 module.exports.paymentController = require('./payment.controller');
 
 module.exports.delhiveryController = require('./delhivery.controller');
+module.exports.exchangeReturnController = require('./exchangeReturn.controller');

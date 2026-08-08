@@ -8,3 +8,4 @@ module.exports.cartValidation = require('./cart.validation');
 module.exports.paymentValidation = require('./payment.validation');
 
 module.exports.delhiveryValidation = require('./delhivery.validation');
+module.exports.exchangeReturnValidation = require('./exchangeReturn.validation');

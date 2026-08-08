@@ -73,13 +73,13 @@ const getOrders = {
 
 const getOrder = {
   params: Joi.object().keys({
-    id: Joi.string().custom(objectId).required(),
+    id: Joi.string().required(),
   }),
 };
 
 const updateOrder = {
   params: Joi.object().keys({
-    id: Joi.string().custom(objectId).required(),
+    id: Joi.string().required(),
   }),
   body: Joi.object()
     .keys({
@@ -94,7 +94,7 @@ const updateOrder = {
 
 const deleteOrder = {
   params: Joi.object().keys({
-    id: Joi.string().custom(objectId).required(),
+    id: Joi.string().required(),
   }),
 };
 

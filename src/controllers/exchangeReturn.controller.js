@@ -1,0 +1,66 @@
+const httpStatus = require('http-status');
+const catchAsync = require('../utils/catchAsync');
+const { exchangeReturnService } = require('../services');
+
+const createExchange = catchAsync(async (req, res) => {
+  const exchange = await exchangeReturnService.createExchange(req);
+  res.status(httpStatus.CREATED).send({ success: true, message: 'Exchange request submitted', data: exchange });
+});
+
+const getMyExchanges = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.getMyExchanges(req);
+  res.status(httpStatus.OK).send(result);
+});
+
+const getExchange = catchAsync(async (req, res) => {
+  const exchange = await exchangeReturnService.getExchangeById(req);
+  res.status(httpStatus.OK).send({ success: true, data: exchange });
+});
+
+const updateExchangeStatus = catchAsync(async (req, res) => {
+  const exchange = await exchangeReturnService.updateExchangeStatus(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Exchange status updated', data: exchange });
+});
+
+const payExchangeCharge = catchAsync(async (req, res) => {
+  const exchange = await exchangeReturnService.payExchangeCharge(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Payment recorded', data: exchange });
+});
+
+const createReturn = catchAsync(async (req, res) => {
+  const returnReq = await exchangeReturnService.createReturn(req);
+  res.status(httpStatus.CREATED).send({ success: true, message: 'Return request submitted', data: returnReq });
+});
+
+const getMyReturns = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.getMyReturns(req);
+  res.status(httpStatus.OK).send(result);
+});
+
+const getReturn = catchAsync(async (req, res) => {
+  const returnReq = await exchangeReturnService.getReturnById(req);
+  res.status(httpStatus.OK).send({ success: true, data: returnReq });
+});
+
+const updateReturnStatus = catchAsync(async (req, res) => {
+  const returnReq = await exchangeReturnService.updateReturnStatus(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Return status updated', data: returnReq });
+});
+
+const uploadImages = catchAsync(async (req, res) => {
+  const uploaded = await exchangeReturnService.uploadExchangeReturnImages(req);
+  res.status(httpStatus.OK).send({ success: true, data: uploaded });
+});
+
+module.exports = {
+  createExchange,
+  getMyExchanges,
+  getExchange,
+  updateExchangeStatus,
+  payExchangeCharge,
+  createReturn,
+  getMyReturns,
+  getReturn,
+  updateReturnStatus,
+  uploadImages,
+};

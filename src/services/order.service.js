@@ -145,14 +145,14 @@ const queryOrders = async (req) => {
  */
 const getOrderById = async (req) => {
   const { id } = req.params;
-  const order = await Order.findById(id).populate('user', 'name email').populate('items.product');
+  const order = await Order.findById(id).populate('items.product');
 
   if (!order) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   }
 
   // Check if user can access this order
-  if (req.user.role !== 'admin' && order.user._id !== req.user.id) {
+  if (req.user.role !== 'admin' && order.user !== req.user.id) {
     throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
 

@@ -63,6 +63,10 @@ const defaultRoutes = [
     path: '/page-impressions',
     route: pageImpressionRoute,
   },
+  {
+    path: '/exchange-return',
+    route: require('./exchangeReturn.route'),
+  },
 ];
 
 const devRoutes = [
