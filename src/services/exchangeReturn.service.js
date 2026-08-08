@@ -550,12 +550,12 @@ const scheduleExchangePickup = async (req) => {
       },
     ],
     pickup_location: {
-      name: 'ponpreethatextiles',
-      add: 'Tamil Nadu',
-      city: 'Rajapalayam',
-      pin_code: '626122',
-      country: 'India',
-      phone: '9500260077',
+      name: addr.name,
+      add: addr.add,
+      city: addr.city,
+      pin_code: addr.pin,
+      country: addr.country,
+      phone: addr.phone,
     },
   };
 
