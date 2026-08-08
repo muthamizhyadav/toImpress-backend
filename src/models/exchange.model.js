@@ -27,6 +27,8 @@ const exchangeSchema = mongoose.Schema(
     },
     paymentId: { type: String },
     paymentOrderId: { type: String },
+    pickupWaybill: { type: String },
+    replacementWaybill: { type: String },
     processingCharge: { type: Number, default: 150 },
     adminNotes: { type: String, trim: true },
   },

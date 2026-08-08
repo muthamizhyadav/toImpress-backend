@@ -73,6 +73,30 @@ adminRouter
   );
 
 adminRouter
+  .route('/exchange-requests/:id/pickup')
+  .post(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.adminExchangePickup),
+    exchangeReturnController.scheduleExchangePickup
+  );
+
+adminRouter
+  .route('/exchange-requests/:id/replacement')
+  .post(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.adminDispatchReplacement),
+    exchangeReturnController.dispatchReplacement
+  );
+
+adminRouter
+  .route('/exchange-requests/:id/track')
+  .get(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.adminExchangeTrack),
+    exchangeReturnController.checkExchangeShipment
+  );
+
+adminRouter
   .route('/exchange-requests/:id/payment')
   .post(
     auth('manageOrders'),
@@ -98,6 +122,22 @@ adminRouter
     auth('manageOrders'),
     validate(exchangeReturnValidation.adminProcessRefund),
     exchangeReturnController.adminProcessRefund
+  );
+
+adminRouter
+  .route('/return-requests/:id/pickup')
+  .post(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.adminExchangePickup),
+    exchangeReturnController.scheduleReturnPickup
+  );
+
+adminRouter
+  .route('/return-requests/:id/track')
+  .get(
+    auth('manageOrders'),
+    validate(exchangeReturnValidation.adminExchangeTrack),
+    exchangeReturnController.checkReturnShipment
   );
 
 module.exports = router;

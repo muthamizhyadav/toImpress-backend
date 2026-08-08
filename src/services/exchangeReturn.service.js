@@ -1,6 +1,7 @@
 const httpStatus = require('http-status');
 const { Exchange, Return, Order, User } = require('../models');
 const ApiError = require('../utils/ApiError');
+const { createShipment, trackShipment } = require('./delhivery.service');
 
 const EXCHANGE_STATUS_MAP = {
   requested: 'Exchange Requested',
@@ -343,6 +344,8 @@ const getAdminExchanges = async (req) => {
       status: toLabel(EXCHANGE_STATUS_MAP, e.status),
       rawStatus: e.status,
       adminNote: e.adminNotes || '',
+      pickupWaybill: e.pickupWaybill || '',
+      replacementWaybill: e.replacementWaybill || '',
       paymentStatus: getPaymentStatus(e.status),
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
@@ -418,6 +421,7 @@ const getAdminReturns = async (req) => {
       adminNote: r.adminNotes || '',
       refundAmount: r.refundAmount,
       refundMethod: r.refundMethod,
+      pickupWaybill: r.pickupWaybill || '',
       refundStatus: getRefundStatus(r.status),
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
@@ -478,6 +482,238 @@ const uploadExchangeReturnImages = async (req) => {
   return uploaded;
 };
 
+const getCustomerAddress = (order, user) => {
+  const addr = order.shippingAddress || {};
+  const saved = (user.address && user.address[0]) || {};
+  return {
+    name: saved.name || 'Customer',
+    phone: String(addr.phone || saved.phone || ''),
+    add: [addr.line1, addr.street, addr.line2].filter(Boolean).join(', ') || saved.street || 'Address',
+    city: addr.city || saved.city || 'Rajapalayam',
+    state: addr.state || saved.state || 'Tamil Nadu',
+    country: addr.country || 'India',
+    pin: String(addr.pincode || addr.zip || saved.zip || '626122'),
+  };
+};
+
+const scheduleExchangePickup = async (req) => {
+  const { id } = req.params;
+  const exchange = await Exchange.findById(id);
+  if (!exchange) throw new ApiError(httpStatus.NOT_FOUND, 'Exchange request not found');
+  if (!['approved', 'payment_completed', 'pickup_scheduled'].includes(exchange.status)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Exchange cannot be scheduled for pickup in this state');
+  }
+
+  const order = await Order.findById(exchange.orderId);
+  if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+  const user = await User.findById(exchange.user);
+  const addr = getCustomerAddress(order, user);
+
+  const shipmentData = {
+    shipments: [
+      {
+        name: addr.name,
+        phone: addr.phone,
+        add: addr.add,
+        pin: addr.pin,
+        city: addr.city,
+        state: addr.state,
+        country: addr.country,
+        order: `EXRN-${exchange._id.slice(0, 8)}`,
+        orderId: exchange.orderId,
+        payment_mode: 'COD',
+        products_desc: exchange.productTitle || 'Exchange return pickup',
+        quantity: '1',
+        total_amount: '0',
+        return_pin: '626122',
+        return_city: 'Rajapalayam',
+        invoice_no: `INVEX${Date.now()}`,
+        invoice_date: new Date().toISOString().split('T')[0],
+      },
+    ],
+    pickup_location: {
+      name: 'ponpreethatextiles',
+      add: 'Tamil Nadu',
+      city: 'Rajapalayam',
+      pin_code: '626122',
+      country: 'India',
+      phone: '9500260077',
+    },
+  };
+
+  const result = await createShipment(shipmentData, req.user.id);
+  const pkg = result && result.packages && result.packages[0];
+  if (!pkg || !pkg.waybill) {
+    throw new ApiError(httpStatus.BAD_REQUEST, pkg && pkg.remarks ? pkg.remarks.join(', ') : 'Reverse pickup creation failed');
+  }
+
+  exchange.pickupWaybill = pkg.waybill;
+  exchange.status = 'pickup_scheduled';
+  await exchange.save();
+  return { exchange, waybill: pkg.waybill, result };
+};
+
+const dispatchReplacement = async (req) => {
+  const { id } = req.params;
+  const exchange = await Exchange.findById(id);
+  if (!exchange) throw new ApiError(httpStatus.NOT_FOUND, 'Exchange request not found');
+  if (!['product_received', 'replacement_dispatched'].includes(exchange.status)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Replacement can only be dispatched after product is received');
+  }
+
+  const order = await Order.findById(exchange.orderId);
+  if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+  const user = await User.findById(exchange.user);
+  const addr = getCustomerAddress(order, user);
+
+  const shipmentData = {
+    shipments: [
+      {
+        name: addr.name,
+        phone: addr.phone,
+        add: addr.add,
+        pin: addr.pin,
+        city: addr.city,
+        state: addr.state,
+        country: addr.country,
+        order: `EXCH-${exchange._id.slice(0, 8)}`,
+        orderId: exchange.orderId,
+        payment_mode: 'Prepaid',
+        products_desc: exchange.productTitle || 'Replacement product',
+        quantity: '1',
+        total_amount: '150',
+        invoice_no: `INV${Date.now()}`,
+        invoice_date: new Date().toISOString().split('T')[0],
+      },
+    ],
+    pickup_location: {
+      name: 'ponpreethatextiles',
+      add: 'Tamil Nadu',
+      city: 'Rajapalayam',
+      pin_code: '626122',
+      country: 'India',
+      phone: '9500260077',
+    },
+  };
+
+  const result = await createShipment(shipmentData, req.user.id);
+  const pkg = result && result.packages && result.packages[0];
+  if (!pkg || !pkg.waybill) {
+    throw new ApiError(httpStatus.BAD_REQUEST, pkg && pkg.remarks ? pkg.remarks.join(' ') : 'Replacement dispatch failed');
+  }
+
+  exchange.replacementWaybill = pkg.waybill;
+  exchange.status = 'replacement_dispatched';
+  await exchange.save();
+
+  return { exchange, waybill: pkg.waybill, result };
+};
+
+const isDelhiveryStatusDelivered = (tracking) => {
+  const shipments = tracking && (tracking.ShipmentData || tracking.shipment_data);
+  if (!shipments || !shipments.length) return false;
+  const scans = shipments[0].Scan || shipments[0].scans || [];
+  return scans.some((s) => s.Status && /delivered|complete|rto/i.test(s.Status));
+};
+
+const checkExchangeShipment = async (req) => {
+  const { id } = req.params;
+  const exchange = await Exchange.findById(id);
+  if (!exchange) throw new ApiError(httpStatus.NOT_FOUND, 'Exchange request not found');
+
+  const isReplacement = ['replacement_dispatched', 'exchange_completed'].includes(exchange.status);
+  const waybill = isReplacement ? exchange.replacementWaybill : exchange.pickupWaybill;
+  if (!waybill) throw new ApiError(httpStatus.BAD_REQUEST, 'No waybill assigned yet');
+
+  const tracking = await trackShipment(waybill);
+  const delivered = isDelhiveryStatusDelivered(tracking);
+
+  if (delivered) {
+    if (isReplacement) {
+      exchange.status = 'exchange_completed';
+    } else if (exchange.status !== 'replacement_dispatched') {
+      exchange.status = 'product_received';
+    }
+    await exchange.save();
+  }
+
+  return { exchange, tracking, delivered };
+};
+
+const scheduleReturnPickup = async (req) => {
+  const { id } = req.params;
+  const returnReq = await Return.findById(id);
+  if (!returnReq) throw new ApiError(httpStatus.NOT_FOUND, 'Return request not found');
+  if (!['approved', 'pickup_scheduled'].includes(returnReq.status)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Return cannot be scheduled for pickup in this state');
+  }
+
+  const order = await Order.findById(returnReq.orderId);
+  if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
+  const user = await User.findById(returnReq.user);
+  const addr = getCustomerAddress(order, user);
+
+  const shipmentData = {
+    shipments: [
+      {
+        name: addr.name,
+        phone: addr.phone,
+        add: addr.add,
+        pin: addr.pin,
+        city: addr.city,
+        state: addr.state,
+        country: addr.country,
+        order: `RETRN-${returnReq._id.slice(0, 8)}`,
+        orderId: returnReq.orderId,
+        payment_mode: 'COD',
+        products_desc: returnReq.productTitle || 'Return pickup',
+        quantity: '1',
+        total_amount: '0',
+        return_pin: '626122',
+        return_city: 'Rajapalayam',
+        invoice_no: `INVRT${Date.now()}`,
+        invoice_date: new Date().toISOString().split('T')[0],
+      },
+    ],
+    pickup_location: {
+      name: 'ponpreethatextiles',
+      add: 'Tamil Nadu',
+      city: 'Rajapalayam',
+      pin_code: '626122',
+      country: 'India',
+      phone: '9500260077',
+    },
+  };
+
+  const result = await createShipment(shipmentData, req.user.id);
+  const pkg = result && result.packages && result.packages[0];
+  if (!pkg || !pkg.waybill) {
+    throw new ApiError(httpStatus.BAD_REQUEST, pkg && pkg.remarks ? pkg.remarks.join(', ') : 'Return pickup creation failed');
+  }
+
+  returnReq.pickupWaybill = pkg.waybill;
+  returnReq.status = 'pickup_scheduled';
+  await returnReq.save();
+  return { returnReq, waybill: pkg.waybill, result };
+};
+
+const checkReturnShipment = async (req) => {
+  const { id } = req.params;
+  const returnReq = await Return.findById(id);
+  if (!returnReq) throw new ApiError(httpStatus.NOT_FOUND, 'Return request not found');
+  if (!returnReq.pickupWaybill) throw new ApiError(httpStatus.BAD_REQUEST, 'No waybill assigned yet');
+
+  const tracking = await trackShipment(returnReq.pickupWaybill);
+  const delivered = isDelhiveryStatusDelivered(tracking);
+
+  if (delivered && !['refund_initiated', 'refund_credited', 'return_completed'].includes(returnReq.status)) {
+    returnReq.status = 'product_received';
+    await returnReq.save();
+  }
+
+  return { returnReq, tracking, delivered };
+};
+
 module.exports = {
   createExchange,
   getMyExchanges,
@@ -493,4 +729,9 @@ module.exports = {
   getAdminReturns,
   adminPayExchange,
   adminProcessRefund,
+  scheduleExchangePickup,
+  dispatchReplacement,
+  checkExchangeShipment,
+  scheduleReturnPickup,
+  checkReturnShipment,
 };

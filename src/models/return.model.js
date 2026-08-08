@@ -26,6 +26,7 @@ const returnSchema = mongoose.Schema(
     refundAmount: { type: Number },
     refundMethod: { type: String },
     refundTransactionId: { type: String },
+    pickupWaybill: { type: String },
     adminNotes: { type: String, trim: true },
   },
   { timestamps: true }

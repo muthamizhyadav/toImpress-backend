@@ -212,6 +212,18 @@ const adminProcessRefund = {
   }),
 };
 
+const adminExchangePickup = {
+  params: Joi.object().keys({ id: Joi.string().required() }),
+};
+
+const adminDispatchReplacement = {
+  params: Joi.object().keys({ id: Joi.string().required() }),
+};
+
+const adminExchangeTrack = {
+  params: Joi.object().keys({ id: Joi.string().required() }),
+};
+
 module.exports = {
   createExchange,
   getMyExchanges,
@@ -228,4 +240,7 @@ module.exports = {
   updateAdminReturnStatus,
   adminPayExchange,
   adminProcessRefund,
+  adminExchangePickup,
+  adminDispatchReplacement,
+  adminExchangeTrack,
 };

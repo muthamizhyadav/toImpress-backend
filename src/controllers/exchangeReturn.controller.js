@@ -72,6 +72,31 @@ const uploadImages = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({ success: true, data: uploaded });
 });
 
+const scheduleExchangePickup = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.scheduleExchangePickup(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Reverse pickup scheduled', ...result });
+});
+
+const dispatchReplacement = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.dispatchReplacement(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Replacement dispatched', ...result });
+});
+
+const checkExchangeShipment = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.checkExchangeShipment(req);
+  res.status(httpStatus.OK).send({ success: true, ...result });
+});
+
+const scheduleReturnPickup = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.scheduleReturnPickup(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Return pickup scheduled', ...result });
+});
+
+const checkReturnShipment = catchAsync(async (req, res) => {
+  const result = await exchangeReturnService.checkReturnShipment(req);
+  res.status(httpStatus.OK).send({ success: true, ...result });
+});
+
 module.exports = {
   createExchange,
   getMyExchanges,
@@ -87,4 +112,9 @@ module.exports = {
   getAdminReturns,
   adminPayExchange,
   adminProcessRefund,
+  scheduleExchangePickup,
+  dispatchReplacement,
+  checkExchangeShipment,
+  scheduleReturnPickup,
+  checkReturnShipment,
 };
