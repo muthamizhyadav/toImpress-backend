@@ -351,6 +351,29 @@ const getOrders = async (req, res) => {
       },
     },
     { $unwind: { path: "$shipment", preserveNullAndEmptyArrays: true } },
+
+    {
+      $lookup: {
+        from: "exchanges",
+        localField: "_id",
+        foreignField: "orderId",
+        as: "exchangeRequests",
+      },
+    },
+    {
+      $lookup: {
+        from: "returns",
+        localField: "_id",
+        foreignField: "orderId",
+        as: "returnRequests",
+      },
+    },
+    {
+      $addFields: {
+        hasExchangeRequest: { $gt: [{ $size: "$exchangeRequests" }, 0] },
+        hasReturnRequest: { $gt: [{ $size: "$returnRequests" }, 0] },
+      },
+    },
   ]);
 
   return {
