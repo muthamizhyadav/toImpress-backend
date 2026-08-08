@@ -11,7 +11,7 @@ const exchangeSchema = mongoose.Schema(
     product: { type: String, required: true },
     productTitle: { type: String, required: true },
     productImage: { type: String },
-    currentSize: { type: String, required: true },
+    currentSize: { type: String, default: '' },
     newSize: { type: String, required: true },
     reason: {
       type: String,
