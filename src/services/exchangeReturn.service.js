@@ -38,13 +38,15 @@ const buildUserMap = async (userIds) => {
   const ids = [...new Set(userIds.filter(Boolean))];
   if (!ids.length) return {};
   const users = await User.find({ _id: { $in: ids } })
-    .select('name mobile')
+    .select('name mobile address')
     .lean();
   return users.reduce((acc, u) => {
     acc[u._id] = u;
     return acc;
   }, {});
 };
+
+const customerName = (u) => u.name || (u.address && u.address[0] && u.address[0].name) || u.mobile || 'N/A';
 
 const getPaymentStatus = (status) => {
   if (
@@ -302,7 +304,7 @@ const getAdminExchanges = async (req) => {
       _id: e._id,
       orderId: e.orderId,
       orderItemId: e.orderItemId,
-      userName: u.name || 'N/A',
+      userName: customerName(u),
       userMobile: u.mobile || '',
       user: e.user,
       productName: e.productTitle,
@@ -375,7 +377,7 @@ const getAdminReturns = async (req) => {
       _id: r._id,
       orderId: r.orderId,
       orderItemId: r.orderItemId,
-      userName: u.name || 'N/A',
+      userName: customerName(u),
       userMobile: u.mobile || '',
       user: r.user,
       productName: r.productTitle,
