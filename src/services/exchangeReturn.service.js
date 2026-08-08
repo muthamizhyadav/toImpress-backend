@@ -101,6 +101,15 @@ const createExchange = async (req) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'An exchange request already exists for this item');
   }
 
+  const activeReturnForExchange = await Return.findOne({
+    user: userId,
+    orderItemId,
+    status: { $nin: ['rejected', 'return_completed', 'refund_credited'] },
+  });
+  if (activeReturnForExchange) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'You already have a return request for this item');
+  }
+
   const exchange = await Exchange.create({
     user: userId,
     orderId,
@@ -215,6 +224,15 @@ const createReturn = async (req) => {
   });
   if (activeReturn) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'A return request already exists for this item');
+  }
+
+  const activeExchangeForReturn = await Exchange.findOne({
+    user: userId,
+    orderItemId,
+    status: { $nin: ['rejected', 'exchange_completed'] },
+  });
+  if (activeExchangeForReturn) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'You already have an exchange request for this item');
   }
 
   const returnReq = await Return.create({
