@@ -48,6 +48,19 @@ const buildUserMap = async (userIds) => {
 
 const customerName = (u) => u.name || (u.address && u.address[0] && u.address[0].name) || u.mobile || 'N/A';
 
+const buildItemSizeMap = async (itemIds) => {
+  const ids = [...new Set(itemIds.filter(Boolean))];
+  if (!ids.length) return {};
+  const orders = await Order.find({ 'items._id': { $in: ids } }).select('items').lean();
+  const map = {};
+  orders.forEach((o) => {
+    (o.items || []).forEach((it) => {
+      map[String(it._id)] = it.selectedSize || '';
+    });
+  });
+  return map;
+};
+
 const getPaymentStatus = (status) => {
   if (
     ['payment_completed', 'pickup_scheduled', 'product_received', 'replacement_dispatched', 'exchange_completed'].includes(
@@ -296,9 +309,11 @@ const getAdminExchanges = async (req) => {
   const total = await Exchange.countDocuments(filter);
   const totalPages = Math.ceil(total / limit);
   const users = await buildUserMap(exchanges.map((e) => e.user));
+  const sizeMap = await buildItemSizeMap(exchanges.map((e) => e.orderItemId));
 
   const data = exchanges.map((e) => {
     const u = users[e.user] || {};
+    const storedSize = e.currentSize || (e.selectedSize ? e.selectedSize : '');
     return {
       requestId: e._id,
       _id: e._id,
@@ -309,8 +324,8 @@ const getAdminExchanges = async (req) => {
       user: e.user,
       productName: e.productTitle,
       productImage: e.productImage || '',
-      selectedSize: e.currentSize,
-      currentSize: e.currentSize,
+      selectedSize: storedSize || sizeMap[String(e.orderItemId)] || '',
+      currentSize: storedSize || sizeMap[String(e.orderItemId)] || '',
       newSize: e.newSize,
       reason: e.reason,
       description: e.description,
@@ -369,9 +384,11 @@ const getAdminReturns = async (req) => {
   const total = await Return.countDocuments(filter);
   const totalPages = Math.ceil(total / limit);
   const users = await buildUserMap(returns.map((r) => r.user));
+  const sizeMap = await buildItemSizeMap(returns.map((r) => r.orderItemId));
 
   const data = returns.map((r) => {
     const u = users[r.user] || {};
+    const storedSize = r.currentSize || '';
     return {
       requestId: r._id,
       _id: r._id,
@@ -382,7 +399,7 @@ const getAdminReturns = async (req) => {
       user: r.user,
       productName: r.productTitle,
       productImage: r.productImage || '',
-      selectedSize: r.currentSize || '',
+      selectedSize: storedSize || sizeMap[String(r.orderItemId)] || '',
       reason: r.reason,
       description: r.description,
       images: r.images || [],
