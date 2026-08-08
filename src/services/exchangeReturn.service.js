@@ -526,6 +526,7 @@ const scheduleExchangePickup = async (req) => {
   if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   const user = await User.findById(exchange.user);
   const addr = getCustomerAddress(order, user);
+  console.log('🔴 EXCHANGE PICKUP USER ADDRESS:', JSON.stringify({ addr, orderShippingAddress: order.shippingAddress, userAddress: user && user.address }));
 
   const shipmentData = {
     shipments: [
@@ -670,6 +671,7 @@ const scheduleReturnPickup = async (req) => {
   if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   const user = await User.findById(returnReq.user);
   const addr = getCustomerAddress(order, user);
+  console.log('🔴 RETURN PICKUP USER ADDRESS:', JSON.stringify({ addr, orderShippingAddress: order.shippingAddress, userAddress: user && user.address }));
 
   const shipmentData = {
     shipments: [
