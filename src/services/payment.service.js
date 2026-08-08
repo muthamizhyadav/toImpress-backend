@@ -86,14 +86,19 @@ const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id,
   const rzOrder = await RazorPayModel.findOne({ orderId: razorpay_order_id });
   if (!rzOrder) return false;
 
-  const order = await Order.findById(rzOrder.order);
-  if (!order) return false;
-
-  const user = await User.findById(order.user);
-  if (!user || !user.mobile) return false;
-
   // ✅ Update payment status
   await RazorPayModel.findOneAndUpdate({ orderId: razorpay_order_id }, { status: checkPaymentStatus.status });
+
+  let order = null;
+  try {
+    order = rzOrder.order ? await Order.findById(rzOrder.order) : null;
+  } catch (error) {
+    console.error('Order lookup failed for razorpay order:', error.message);
+  }
+  if (!order) return true;
+
+  const user = await User.findById(order.user);
+  if (!user || !user.mobile) return true;
 
   const FALLBACK_IMAGE = 'https://yourcdn.com/default-order-success.jpg';
 
@@ -110,19 +115,17 @@ const verifyRazorpaySignature = async ({ razorpay_order_id, razorpay_payment_id,
   };
   
   try {
-   let res = await axios.post(' https://api.convobox.in/api/templates/webhooks/855353833790259/1391458396335934', payload, {
+    const res = await axios.post(' https://api.convobox.in/api/templates/webhooks/855353833790259/1391458396335934', payload, {
       headers: {
         'Content-Type': 'application/json',
       },
       timeout: 10000,
     });
     console.log(res.data);
-    
   } catch (error) {
     console.error('❌ ConvoBox Status:', error.response?.status);
     console.error('❌ ConvoBox Data:', error.response?.data);
     console.error('❌ ConvoBox Message:', error.message);
-    throw error;
   }
 
   return true;
