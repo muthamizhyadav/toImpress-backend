@@ -12,7 +12,7 @@ const createExchange = async (req) => {
   if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   if (order.user !== userId) throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
 
-  const item = order.items.find((i) => i._id === orderItemId);
+  const item = order.items.find((i) => String(i._id) === orderItemId);
   if (!item) throw new ApiError(httpStatus.NOT_FOUND, 'Order item not found');
 
   const activeExchange = await Exchange.findOne({
@@ -115,7 +115,7 @@ const createReturn = async (req) => {
   if (!order) throw new ApiError(httpStatus.NOT_FOUND, 'Order not found');
   if (order.user !== userId) throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
 
-  const item = order.items.find((i) => i._id === orderItemId);
+  const item = order.items.find((i) => String(i._id) === orderItemId);
   if (!item) throw new ApiError(httpStatus.NOT_FOUND, 'Order item not found');
 
   const activeReturn = await Return.findOne({
