@@ -15,6 +15,15 @@ const createExchange = async (req) => {
   const item = order.items.find((i) => i._id === orderItemId);
   if (!item) throw new ApiError(httpStatus.NOT_FOUND, 'Order item not found');
 
+  const activeExchange = await Exchange.findOne({
+    user: userId,
+    orderItemId,
+    status: { $nin: ['rejected', 'exchange_completed'] },
+  });
+  if (activeExchange) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'An exchange request already exists for this item');
+  }
+
   const exchange = await Exchange.create({
     user: userId,
     orderId,
@@ -108,6 +117,15 @@ const createReturn = async (req) => {
 
   const item = order.items.find((i) => i._id === orderItemId);
   if (!item) throw new ApiError(httpStatus.NOT_FOUND, 'Order item not found');
+
+  const activeReturn = await Return.findOne({
+    user: userId,
+    orderItemId,
+    status: { $nin: ['rejected', 'return_completed', 'refund_credited'] },
+  });
+  if (activeReturn) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'A return request already exists for this item');
+  }
 
   const returnReq = await Return.create({
     user: userId,
