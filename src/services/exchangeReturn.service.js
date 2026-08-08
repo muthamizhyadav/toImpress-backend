@@ -134,7 +134,12 @@ const getMyExchanges = async (req) => {
 
   return {
     success: true,
-    data: exchanges,
+    data: exchanges.map((e) => {
+      const d = e.toJSON();
+      d.createdAt = e.createdAt;
+      d.updatedAt = e.updatedAt;
+      return d;
+    }),
     pagination: {
       total,
       totalPages,
@@ -243,7 +248,12 @@ const getMyReturns = async (req) => {
 
   return {
     success: true,
-    data: returns,
+    data: returns.map((r) => {
+      const d = r.toJSON();
+      d.createdAt = r.createdAt;
+      d.updatedAt = r.updatedAt;
+      return d;
+    }),
     pagination: {
       total,
       totalPages,
