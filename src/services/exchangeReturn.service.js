@@ -178,8 +178,8 @@ const payExchangeCharge = async (req) => {
   const exchange = await Exchange.findById(id);
   if (!exchange) throw new ApiError(httpStatus.NOT_FOUND, 'Exchange request not found');
   if (exchange.user !== userId) throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
-  if (exchange.status !== 'payment_pending') {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Exchange is not awaiting payment');
+  if (!['approved', 'payment_pending'].includes(exchange.status)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Exchange is not awaiting the processing fee payment');
   }
 
   exchange.status = 'payment_completed';
