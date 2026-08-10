@@ -1,6 +1,25 @@
 const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
+const ApiError = require('../utils/ApiError');
 const { exchangeReturnService } = require('../services');
+
+const downloadImage = catchAsync(async (req, res) => {
+  const { url } = req.query;
+  if (!url || !/^https?:\/\/.+/.test(url)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Valid image url is required');
+  }
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new ApiError(response.status, 'Failed to fetch image from source');
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const contentType = response.headers.get('content-type') || 'application/octet-stream';
+  const filename = `image-${Date.now()}.jpg`;
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Length', buffer.length);
+  res.send(buffer);
+});
 
 const createExchange = catchAsync(async (req, res) => {
   const exchange = await exchangeReturnService.createExchange(req);
@@ -117,4 +136,5 @@ module.exports = {
   checkExchangeShipment,
   scheduleReturnPickup,
   checkReturnShipment,
+  downloadImage,
 };

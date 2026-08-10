@@ -148,5 +148,7 @@ adminRouter
     exchangeReturnController.checkReturnShipment
   );
 
+adminRouter.route('/download-image').get(auth('manageOrders'), exchangeReturnController.downloadImage);
+
 module.exports = router;
 module.exports.adminExchangeReturnRouter = adminRouter;
