@@ -6,40 +6,18 @@ const auth = require('../../middlewares/auth');
 
 const router = express.Router();
 
-router.post(
-  '/shipment',
-  auth(),
-  delhiveryController.createShipment
-);
+router.post('/shipment', auth(), delhiveryController.createShipment);
 
-router.get(
-  '/warehouses',
-  delhiveryController.getWarehouses
-);
+router.get('/warehouses', delhiveryController.getWarehouses);
 
-router.post(
-  '/test-json',
-  delhiveryController.testJsonParsing
-);
+router.post('/test-json', delhiveryController.testJsonParsing);
 
-router.get(
-  '/test-api',
-  delhiveryController.testApiConnectivity
-);
+router.get('/test-api', delhiveryController.testApiConnectivity);
 
-router.post(
-  '/test-minimal',
-  delhiveryController.testMinimalShipment
-);
+router.post('/test-minimal', delhiveryController.testMinimalShipment);
 
-router.get(
-  '/track',
-  delhiveryController.trackShipment
-);
+router.get('/track', validate(delhiveryValidation.trackShipment), delhiveryController.trackShipment);
 
-router.get(
-  '/orders',
-  delhiveryController.getOrders
-);
+router.get('/orders', delhiveryController.getOrders);
 
 module.exports = router;
