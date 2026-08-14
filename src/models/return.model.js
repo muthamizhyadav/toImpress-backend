@@ -20,9 +20,12 @@ const returnSchema = mongoose.Schema(
     images: [{ type: String }],
     status: {
       type: String,
-      enum: ['requested', 'under_review', 'approved', 'rejected', 'pickup_scheduled', 'product_received', 'quality_inspection', 'refund_initiated', 'refund_credited', 'return_completed'],
+      enum: ['requested', 'under_review', 'approved', 'rejected', 'payment_pending', 'payment_completed', 'pickup_scheduled', 'product_received', 'quality_inspection', 'refund_initiated', 'refund_credited', 'return_completed'],
       default: 'requested',
     },
+    paymentId: { type: String },
+    paymentOrderId: { type: String },
+    processingCharge: { type: Number, default: 150 },
     refundAmount: { type: Number },
     refundMethod: { type: String },
     refundTransactionId: { type: String },

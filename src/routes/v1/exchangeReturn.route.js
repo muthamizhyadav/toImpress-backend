@@ -58,6 +58,10 @@ router
   .route('/returns/:id/track')
   .get(auth(), validate(exchangeReturnValidation.adminExchangeTrack), exchangeReturnController.checkReturnShipment);
 
+router
+  .route('/returns/:id/pay')
+  .post(auth(), validate(exchangeReturnValidation.payReturnCharge), exchangeReturnController.payReturnCharge);
+
 // File upload route
 router.route('/upload/images').post(auth(), upload.array('images', 5), exchangeReturnController.uploadImages);
 

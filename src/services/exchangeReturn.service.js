@@ -20,6 +20,7 @@ const RETURN_STATUS_MAP = {
   under_review: 'Under Review',
   approved: 'Approved',
   payment_pending: 'Payment Pending',
+  payment_completed: 'Payment Completed',
   pickup_scheduled: 'Pickup Scheduled',
   product_received: 'Product Received',
   quality_inspection: 'Quality Inspection',
@@ -64,9 +65,17 @@ const buildItemSizeMap = async (itemIds) => {
 
 const getPaymentStatus = (status) => {
   if (
-    ['payment_completed', 'pickup_scheduled', 'product_received', 'replacement_dispatched', 'exchange_completed'].includes(
-      status
-    )
+    [
+      'payment_completed',
+      'pickup_scheduled',
+      'product_received',
+      'replacement_dispatched',
+      'exchange_completed',
+      'quality_inspection',
+      'refund_initiated',
+      'refund_credited',
+      'return_completed',
+    ].includes(status)
   )
     return 'completed';
   if (['approved', 'payment_pending'].includes(status)) return 'pending';
@@ -441,6 +450,7 @@ const getAdminReturns = async (req) => {
       refundMethod: r.refundMethod,
       pickupWaybill: r.pickupWaybill || '',
       refundStatus: getRefundStatus(r.status),
+      paymentStatus: getPaymentStatus(r.status),
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     };
@@ -662,11 +672,30 @@ const checkExchangeShipment = async (req) => {
   return { exchange, tracking, delivered };
 };
 
+const payReturnCharge = async (req) => {
+  const { id } = req.params;
+  const { paymentId, orderId } = req.body;
+  const userId = req.user.id;
+
+  const returnReq = await Return.findById(id);
+  if (!returnReq) throw new ApiError(httpStatus.NOT_FOUND, 'Return request not found');
+  if (returnReq.user !== userId) throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
+  if (!['approved', 'payment_pending'].includes(returnReq.status)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Return is not awaiting the processing fee payment');
+  }
+
+  returnReq.status = 'payment_completed';
+  returnReq.paymentId = paymentId;
+  returnReq.paymentOrderId = orderId;
+  await returnReq.save();
+  return returnReq;
+};
+
 const scheduleReturnPickup = async (req) => {
   const { id } = req.params;
   const returnReq = await Return.findById(id);
   if (!returnReq) throw new ApiError(httpStatus.NOT_FOUND, 'Return request not found');
-  if (!['approved', 'pickup_scheduled'].includes(returnReq.status)) {
+  if (!['approved', 'payment_completed', 'pickup_scheduled'].includes(returnReq.status)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Return cannot be scheduled for pickup in this state');
   }
 
@@ -751,6 +780,7 @@ module.exports = {
   getMyReturns,
   getReturnById,
   updateReturnStatus,
+  payReturnCharge,
   uploadExchangeReturnImages,
   getAdminExchanges,
   getAdminReturns,

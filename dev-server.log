@@ -1,0 +1,36 @@
+
+> create-nodejs-express-app@1.7.0 dev
+> cross-env NODE_ENV=development nodemon src/index.js
+
+[33m[nodemon] 2.0.9[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,json[39m
+[32m[nodemon] starting `node src/index.js`[39m
+(node:27296) [DEP0170] DeprecationWarning: The URL mongodb://innovaturetechenginneers:12345@cluster0-shard-00-00.v5xdh.mongodb.net:27017,cluster0-shard-00-01.v5xdh.mongodb.net:27017,cluster0-shard-00-02.v5xdh.mongodb.net:27017/toimpress?authSource=admin&replicaSet=atlas-i8k3hf-shard-0&ssl=true is invalid. Future versions of Node.js will throw an error.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[32minfo[39m: Connected to MongoDB
+[32minfo[39m: Listening to port 3000
+[33mwarn[39m: Unable to connect to email server. Make sure you have configured the SMTP options in .env
+[31merror[39m: Error: Not found
+    at D:\ms\toImpress-backend\src\app.js:58:8
+    at Layer.handle [as handle_request] (D:\ms\toImpress-backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:317:13)
+    at D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:284:7
+    at router.process_params (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:335:12)
+    at next (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:275:10)
+    at D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:635:15
+    at next (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:260:14)
+    at D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:635:15
+    at next (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:260:14)
+    at router.handle (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:174:3)
+    at router (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (D:\ms\toImpress-backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:317:13)
+    at D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:284:7
+    at router.process_params (D:\ms\toImpress-backend\node_modules\express\lib\router\index.js:335:12)
+[31merror[39m: GET /v1/health 404 - 48.701 ms - message: Not found
+[32minfo[39m: OPTIONS /v1/exchange-requests?page=1&search=&status= 204 - 0.742 ms
+[32minfo[39m: GET /v1/exchange-requests?page=1&search=&status= 200 - 265.465 ms
+[32minfo[39m: OPTIONS /v1/return-requests?page=1&search=&status= 204 - 0.485 ms
+[32minfo[39m: GET /v1/return-requests?page=1&search=&status= 200 - 205.589 ms

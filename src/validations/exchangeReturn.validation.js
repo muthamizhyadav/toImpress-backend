@@ -61,6 +61,16 @@ const payExchangeCharge = {
   }),
 };
 
+const payReturnCharge = {
+  params: Joi.object().keys({
+    id: Joi.string().required(),
+  }),
+  body: Joi.object().keys({
+    paymentId: Joi.string().required(),
+    orderId: Joi.string().required(),
+  }),
+};
+
 const createReturn = {
   body: Joi.object().keys({
     orderId: Joi.string().required(),
@@ -97,6 +107,7 @@ const updateReturnStatus = {
         'under_review',
         'approved',
         'rejected',
+        'payment_completed',
         'pickup_scheduled',
         'product_received',
         'quality_inspection',
@@ -151,6 +162,7 @@ const RETURN_ADMIN_STATUSES = [
   'under_review',
   'approved',
   'payment_pending',
+  'payment_completed',
   'pickup_scheduled',
   'product_received',
   'quality_inspection',
@@ -161,6 +173,7 @@ const RETURN_ADMIN_STATUSES = [
   'Under Review',
   'Approved',
   'Payment Pending',
+  'Payment Completed',
   'Pickup Scheduled',
   'Product Received',
   'Quality Inspection',
@@ -230,6 +243,7 @@ module.exports = {
   getExchange,
   updateExchangeStatus,
   payExchangeCharge,
+  payReturnCharge,
   createReturn,
   getMyReturns,
   getReturn,

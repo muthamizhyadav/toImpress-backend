@@ -71,6 +71,11 @@ const adminPayExchange = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send({ success: true, message: 'Payment recorded', data: exchange });
 });
 
+const payReturnCharge = catchAsync(async (req, res) => {
+  const returnReq = await exchangeReturnService.payReturnCharge(req);
+  res.status(httpStatus.OK).send({ success: true, message: 'Payment recorded', data: returnReq });
+});
+
 const adminProcessRefund = catchAsync(async (req, res) => {
   const returnReq = await exchangeReturnService.adminProcessRefund(req);
   res.status(httpStatus.OK).send({ success: true, message: 'Refund initiated', data: returnReq });
@@ -130,6 +135,7 @@ module.exports = {
   getAdminExchanges,
   getAdminReturns,
   adminPayExchange,
+  payReturnCharge,
   adminProcessRefund,
   scheduleExchangePickup,
   dispatchReplacement,
