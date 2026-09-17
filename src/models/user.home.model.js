@@ -36,6 +36,10 @@ const bannerSchema = mongoose.Schema(
     },
     price: {
       type: String,
+    },
+    priceType: {
+      type: String,
+      default: 'price',
     }
   },
   { timestamp: true }
