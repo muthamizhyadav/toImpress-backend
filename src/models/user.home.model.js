@@ -30,6 +30,12 @@ const bannerSchema = mongoose.Schema(
     },
     reDirectionUrl:{
       type: String,
+    },
+    category: {
+      type: String,
+    },
+    price: {
+      type: String,
     }
   },
   { timestamp: true }

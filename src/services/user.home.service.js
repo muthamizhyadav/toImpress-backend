@@ -4,13 +4,29 @@ const ApiError = require('../utils/ApiError');
 const uploadToR2 = require('../utils/fileUpload');
 
 const createBanner = async (req) => {
-  if (!req.file) {
-    throw new ApiError(httpStatus[422], 'Banner Image Required');
+  let bannerUrl = '';
+  if (req.file) {
+    const file = req.file;
+    bannerUrl = await uploadToR2(file.buffer, file.originalname, file.mimetype, 'banner');
   }
-  const file = req.file;
-  const bannerUrl = await uploadToR2(file.buffer, file.originalname, file.mimetype, 'banner');
-  const creation = await Banner.create({ ...req.body, ...{ url: bannerUrl } });
+  const creation = await Banner.create({ ...req.body, ...(bannerUrl ? { url: bannerUrl } : {}) });
   return creation;
+};
+
+const updateBannerById = async (id, req) => {
+  const banner = await Banner.findById(id);
+  if (!banner) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Banner not found');
+  }
+  const updates = { ...req.body };
+  if (req.file) {
+    const { file } = req;
+    updates.url = await uploadToR2(file.buffer, file.originalname, file.mimetype, 'banner');
+  }
+  delete updates.id;
+  Object.assign(banner, updates);
+  await banner.save();
+  return banner;
 };
 
 const fetchAllBanner = async (req) => {
@@ -28,6 +44,7 @@ const deleteBannerById = async (id) => {
 
 module.exports = {
   createBanner,
+  updateBannerById,
   fetchAllBanner,
   deleteBannerById,
 };

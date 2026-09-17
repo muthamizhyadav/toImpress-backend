@@ -12,6 +12,10 @@ const getAllBanners = catchAsync(async (req, res) => {
   const data = await userHomeService.fetchAllBanner(req);
   res.send(data);
 });
+const updateBannerById = catchAsync(async (req, res) => {
+  const data = await userHomeService.updateBannerById(req.params.id, req);
+  res.status(httpStatus.OK).send(data);
+});
 const deleteBannerById = catchAsync(async (req, res) => {
   const data = await userHomeService.deleteBannerById(req.params.id);
   res.status(httpStatus.OK).send(data);
@@ -20,5 +24,6 @@ const deleteBannerById = catchAsync(async (req, res) => {
 module.exports = {
   createBanner,
   getAllBanners,
+  updateBannerById,
   deleteBannerById,
 };
