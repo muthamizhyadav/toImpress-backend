@@ -30,7 +30,7 @@ const updateBannerById = async (id, req) => {
 };
 
 const fetchAllBanner = async (req) => {
-  const getBanners = await Banner.find().sort({ position: -1 });
+  const getBanners = await Banner.find().sort({ position: 1 });
   return getBanners;
 };
 const deleteBannerById = async (id) => {
