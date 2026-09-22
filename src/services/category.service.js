@@ -5,6 +5,9 @@ const uploadToR2 = require('../utils/fileUpload');
 
 const createCategory = async (req) => {
   const body = req.body;
+  if (body.order !== undefined) {
+    body.order = parseInt(body.order, 10) || 0;
+  }
   const file = req.file;
   if (file) {
     const url = await uploadToR2(file.buffer, file.originalname, file.mimetype, 'category');
@@ -35,6 +38,9 @@ const deleteCategory = async (req) => {
 const updateCategory = async (req) => {
   const { id } = req.params;
   const body = req.body;
+  if (body.order !== undefined) {
+    body.order = parseInt(body.order, 10) || 0;
+  }
   const file = req.file;
   const existingCategory = await Category.findById(id);
   if (!existingCategory) {
