@@ -57,4 +57,19 @@ const updateCategory = async (req) => {
   return updatedCategory;
 };
 
-module.exports = { createCategory, fetchAllCategory, deleteCategory, updateCategory };
+const bulkUpdateOrder = async (req) => {
+  const { categories } = req.body;
+  if (!Array.isArray(categories)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'categories must be an array');
+  }
+  const operations = categories.map(({ id, order }) => ({
+    updateOne: {
+      filter: { _id: id },
+      update: { $set: { order: parseInt(order, 10) || 0 } },
+    },
+  }));
+  await Category.bulkWrite(operations);
+  return { message: 'Category order updated successfully' };
+};
+
+module.exports = { createCategory, fetchAllCategory, deleteCategory, updateCategory, bulkUpdateOrder };

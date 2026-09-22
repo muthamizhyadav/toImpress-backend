@@ -23,9 +23,15 @@ const updateCategory = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(category);
 });
 
+const bulkUpdateOrder = catchAsync(async (req, res) => {
+  const result = await categoryService.bulkUpdateOrder(req);
+  res.status(httpStatus.OK).send(result);
+});
+
 module.exports = {
   createCategory,
   fetchAllCategory,
   deleteCategory,
   updateCategory,
+  bulkUpdateOrder,
 };

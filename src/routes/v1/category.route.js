@@ -12,5 +12,6 @@ router
   .route('/')
   .post(upload.single('file'), CategoryController.createCategory)
   .get(CategoryController.fetchAllCategory);
+router.route('/bulk-order').put(CategoryController.bulkUpdateOrder);
 router.route('/:id').delete(CategoryController.deleteCategory).put(upload.single('file'),CategoryController.updateCategory);
 module.exports = router;
