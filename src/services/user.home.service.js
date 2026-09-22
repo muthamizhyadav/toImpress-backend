@@ -42,9 +42,25 @@ const deleteBannerById = async (id) => {
   return { success: true, message: 'Banner deleted successfully' };
 };
 
+const bulkUpdatePosition = async (req) => {
+  const { banners } = req.body;
+  if (!Array.isArray(banners)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'banners must be an array');
+  }
+  const operations = banners.map(({ id, position }) => ({
+    updateOne: {
+      filter: { _id: id },
+      update: { $set: { position: parseInt(position, 10) || 0 } },
+    },
+  }));
+  await Banner.bulkWrite(operations);
+  return { message: 'Banner order updated successfully' };
+};
+
 module.exports = {
   createBanner,
   updateBannerById,
   fetchAllBanner,
   deleteBannerById,
+  bulkUpdatePosition,
 };

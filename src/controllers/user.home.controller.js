@@ -21,9 +21,15 @@ const deleteBannerById = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(data);
 });
 
+const bulkUpdatePosition = catchAsync(async (req, res) => {
+  const data = await userHomeService.bulkUpdatePosition(req);
+  res.status(httpStatus.OK).send(data);
+});
+
 module.exports = {
   createBanner,
   getAllBanners,
   updateBannerById,
   deleteBannerById,
+  bulkUpdatePosition,
 };

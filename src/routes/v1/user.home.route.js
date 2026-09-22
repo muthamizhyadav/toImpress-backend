@@ -9,6 +9,8 @@ const upload = multer({ storage });
 
 router.route('/banner').post(upload.single('image'), userHomeController.createBanner).get(userHomeController.getAllBanners);
 
+router.route('/banner/bulk-order').put(userHomeController.bulkUpdatePosition);
+
 router
   .route('/banner/:id')
   .put(upload.single('image'), userHomeController.updateBannerById)
