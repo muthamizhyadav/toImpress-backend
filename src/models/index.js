@@ -10,3 +10,4 @@ module.exports.Coupon = require('./coupon.model');
 module.exports.Cart = require('./cart.model');
 module.exports.Exchange = require('./exchange.model');
 module.exports.Return = require('./return.model');
+module.exports.Spinner = require('./spinner.model');

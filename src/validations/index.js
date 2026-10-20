@@ -9,3 +9,4 @@ module.exports.paymentValidation = require('./payment.validation');
 
 module.exports.delhiveryValidation = require('./delhivery.validation');
 module.exports.exchangeReturnValidation = require('./exchangeReturn.validation');
+module.exports.spinnerValidation = require('./spinner.validation');

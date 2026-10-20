@@ -10,6 +10,7 @@ const reviewRoute = require('./review.route');
 const couponRoute = require('./coupon.route');
 const cartRoute = require('./cart.route');
 const pageImpressionRoute = require('./page.impression.route');
+const spinnerRoute = require('./spinner.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -66,6 +67,10 @@ const defaultRoutes = [
   {
     path: '/exchange-return',
     route: require('./exchangeReturn.route'),
+  },
+  {
+    path: '/spinners',
+    route: spinnerRoute,
   },
   {
     path: '/',

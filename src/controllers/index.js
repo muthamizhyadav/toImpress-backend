@@ -10,3 +10,4 @@ module.exports.paymentController = require('./payment.controller');
 
 module.exports.delhiveryController = require('./delhivery.controller');
 module.exports.exchangeReturnController = require('./exchangeReturn.controller');
+module.exports.spinnerController = require('./spinner.controller');

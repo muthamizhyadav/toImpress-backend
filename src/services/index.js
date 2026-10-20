@@ -8,4 +8,5 @@ module.exports.reviewService = require('./review.service');
 module.exports.couponService = require('./coupon.service');
 module.exports.cartService = require('./cart.service');
 module.exports.exchangeReturnService = require('./exchangeReturn.service');
+module.exports.spinnerService = require('./spinner.service');
 
