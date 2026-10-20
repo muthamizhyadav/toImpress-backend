@@ -78,6 +78,24 @@ const spinLogSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // Set when the customer redeems this reward on an order.
+    used: {
+      type: Boolean,
+      default: false,
+    },
+    usedAt: {
+      type: Date,
+      default: null,
+    },
+    orderId: {
+      type: String,
+      default: '',
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     spunAt: {
       type: Date,
       default: Date.now,

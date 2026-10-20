@@ -17,6 +17,9 @@ router.route('/live').get(spinnerController.getLiveSpinners);
 // Admin: create the standard 6-offer campaign when the store has none
 router.route('/defaults').post(auth('manageSpinners'), spinnerController.createDefaultSpinner);
 
+// Authenticated: newest unredeemed reward, used by checkout
+router.route('/reward').get(auth(), spinnerController.getMyReward);
+
 // Public (authenticated user): server decides the winning segment
 router.route('/:spinnerId/spin').post(auth(), validate(spinnerValidation.spinSpinner), spinnerController.spinSpinner);
 

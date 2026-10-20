@@ -66,6 +66,14 @@ const getSpinStatus = catchAsync(async (req, res) => {
 });
 
 /**
+ * Authenticated: the newest unredeemed spin reward for checkout.
+ */
+const getMyReward = catchAsync(async (req, res) => {
+  const reward = await spinnerService.getUserReward(req.user.id);
+  res.send({ reward });
+});
+
+/**
  * Admin: all claims for a wheel, with customer name/mobile.
  */
 const getSpinnerClaims = catchAsync(async (req, res) => {
@@ -93,6 +101,7 @@ module.exports = {
   deleteSpinner,
   getLiveSpinners,
   getSpinStatus,
+  getMyReward,
   getSpinnerClaims,
   spinSpinner,
 };

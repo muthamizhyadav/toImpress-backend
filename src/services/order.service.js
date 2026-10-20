@@ -1,6 +1,7 @@
 const httpStatus = require('http-status');
 const { Order, Product, User } = require('../models');
 const ApiError = require('../utils/ApiError');
+const spinnerService = require('./spinner.service');
 
 /**
  * Create an order
@@ -8,7 +9,18 @@ const ApiError = require('../utils/ApiError');
  * @returns {Promise<Order>}
  */
 const createOrder = async (req) => {
-  const { items, shippingAddress, billingAddress, paymentMethod, notes, shippingCost, tax, discount } = req.body;
+  const {
+    items,
+    shippingAddress,
+    billingAddress,
+    paymentMethod,
+    notes,
+    shippingCost,
+    tax,
+    discount,
+    spinnerId,
+    spinnerSegmentIndex,
+  } = req.body;
   const userId = req.user.id;
 
   // Validate user exists
@@ -47,7 +59,33 @@ const createOrder = async (req) => {
     });
   }
 
-  totalAmount += (shippingCost || 0) + (tax || 0) - (discount || 0);
+  // The validated product total is the base every offer is calculated on.
+  const cartTotal = totalAmount;
+  let spinnerDiscount = 0;
+  let rewardClaim = null;
+
+  if (spinnerId) {
+    /*
+     * Claim the reward before touching the order. The atomic claim inside the
+     * service means the same spin can never discount two orders.
+     */
+    rewardClaim = await spinnerService.claimSpinReward(spinnerId, userId, spinnerSegmentIndex);
+    if (!rewardClaim) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'This spin reward is no longer available');
+    }
+
+    spinnerDiscount = spinnerService.calculateRewardDiscount(rewardClaim.segment, cartTotal);
+    if (spinnerDiscount <= 0) {
+      await spinnerService.releaseSpinReward(spinnerId, userId, rewardClaim.segmentIndex);
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        'Your cart total does not meet the minimum order value for this spin reward'
+      );
+    }
+  }
+
+  const totalDiscount = Math.round((Number(discount) || 0) + spinnerDiscount);
+  totalAmount += (shippingCost || 0) + (tax || 0) - totalDiscount;
 
   const shipAddr = Array.isArray(shippingAddress) ? shippingAddress[0] : shippingAddress;
   const billAddr = billingAddress ? (Array.isArray(billingAddress) ? billingAddress[0] : billingAddress) : shipAddr;
@@ -65,10 +103,23 @@ const createOrder = async (req) => {
     notes,
     shippingCost: shippingCost || 0,
     tax: 0,
-    discount: discount || 0,
+    discount: totalDiscount,
   };
 
-  const order = await Order.create(orderData);
+  let order;
+  try {
+    order = await Order.create(orderData);
+  } catch (error) {
+    // Never burn a customer's reward when the order itself failed.
+    if (rewardClaim) {
+      await spinnerService.releaseSpinReward(spinnerId, userId, rewardClaim.segmentIndex);
+    }
+    throw error;
+  }
+
+  if (rewardClaim) {
+    await spinnerService.attachRewardToOrder(spinnerId, userId, rewardClaim.segmentIndex, order._id, spinnerDiscount);
+  }
 
   // Update product stock quantities
   for (const item of items) {

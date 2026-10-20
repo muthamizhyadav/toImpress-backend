@@ -57,6 +57,8 @@ const createOrder = {
     shippingCost: Joi.number().min(0),
     tax: Joi.number().min(0),
     discount: Joi.number().min(0),
+    spinnerId: Joi.string().custom(objectId),
+    spinnerSegmentIndex: Joi.number().integer().min(0),
   }),
 };
 

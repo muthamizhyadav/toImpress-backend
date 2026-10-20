@@ -1,4 +1,5 @@
 const httpStatus = require('http-status');
+const mongoose = require('mongoose');
 const { Spinner, User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { DEFAULT_SPINNER } = require('../config/spinOffers');
@@ -190,6 +191,7 @@ const getSpinStatus = async (spinnerId, userId) => {
           segmentLabel: lastSpin.segmentLabel,
           rewardType: lastSpin.rewardType,
           rewardValue: lastSpin.rewardValue,
+          used: Boolean(lastSpin.used),
           spunAt: lastSpin.spunAt,
         }
       : null,
@@ -214,6 +216,10 @@ const getSpinnerClaims = async (spinnerId) => {
     segmentLabel: spin.segmentLabel,
     rewardType: spin.rewardType,
     rewardValue: spin.rewardValue,
+    used: Boolean(spin.used),
+    usedAt: spin.usedAt || null,
+    orderId: spin.orderId || '',
+    discountAmount: spin.discountAmount || 0,
     spunAt: spin.spunAt,
   }));
 
@@ -366,6 +372,186 @@ const spinSpinner = async (spinnerId, userId, context = {}) => {
   };
 };
 
+/**
+ * Turn a winning segment into a rupee discount against the order total.
+ * Percent rewards are calculated on the total, flat rewards are capped at the
+ * total, and rewards with a minimum order value are skipped below that value.
+ * @param {Object} segment
+ * @param {number} total
+ * @returns {number}
+ */
+const calculateRewardDiscount = (segment, total) => {
+  const orderTotal = Math.max(Number(total) || 0, 0);
+  if (!segment || orderTotal <= 0) {
+    return 0;
+  }
+
+  const minOrderAmount = Number(segment.minOrderAmount) || 0;
+  if (minOrderAmount > 0 && orderTotal < minOrderAmount) {
+    return 0;
+  }
+
+  const value = Math.max(Number.parseFloat(segment.value) || 0, 0);
+
+  switch (segment.rewardType) {
+    case 'percent_discount':
+      return Math.min(orderTotal, Math.round((orderTotal * value) / 100));
+    case 'flat_discount':
+    case 'threshold_discount':
+      return Math.min(orderTotal, Math.round(value));
+    default:
+      // free_shipping / coupon / points are not cart-value discounts.
+      return 0;
+  }
+};
+
+/**
+ * The newest reward this customer has won but not redeemed yet. Checkout uses
+ * this to show and apply the offer against the cart total.
+ * @param {string} userId
+ * @returns {Promise<Object|null>}
+ */
+const getUserReward = async (userId) => {
+  const ownerId = String(userId);
+  const spinners = await Spinner.find({
+    isActive: true,
+    spins: { $elemMatch: { user: ownerId, used: { $ne: true } } },
+  }).sort('-createdAt');
+
+  let claimed = null;
+  spinners.forEach((spinner) => {
+    if (!getAvailability(spinner).ok) {
+      return;
+    }
+    (spinner.spins || []).forEach((spin) => {
+      if (spin.user !== ownerId || spin.used) {
+        return;
+      }
+      if (!claimed || new Date(spin.spunAt) > new Date(claimed.spin.spunAt)) {
+        claimed = { spinner, spin };
+      }
+    });
+  });
+
+  if (!claimed) {
+    return null;
+  }
+
+  const { spinner, spin } = claimed;
+  const segmentIndex = spin.segmentIndex || 0;
+  const segment = (spinner.segments || [])[segmentIndex];
+
+  return {
+    spinnerId: String(spinner._id),
+    spinnerName: spinner.name,
+    segmentIndex,
+    label: (segment && segment.label) || spin.segmentLabel || '',
+    rewardType: (segment && segment.rewardType) || spin.rewardType || '',
+    value: segment && segment.value !== undefined ? segment.value : spin.rewardValue,
+    minOrderAmount: (segment && segment.minOrderAmount) || 0,
+    color: segment && segment.color,
+    spunAt: spin.spunAt,
+    used: false,
+  };
+};
+
+/**
+ * Atomically claim a customer's unused reward so two orders can never consume
+ * the same spin. Returns null when the reward is not available.
+ * @param {string} spinnerId
+ * @param {string} userId
+ * @param {number} [segmentIndex]
+ * @returns {Promise<Object|null>}
+ */
+const claimSpinReward = async (spinnerId, userId, segmentIndex) => {
+  if (!mongoose.Types.ObjectId.isValid(String(spinnerId || ''))) {
+    return null;
+  }
+
+  const ownerId = String(userId);
+  const hasIndex = Number.isInteger(segmentIndex) && segmentIndex >= 0;
+  const spinMatch = {
+    user: ownerId,
+    used: { $ne: true },
+    ...(hasIndex ? { segmentIndex } : {}),
+  };
+
+  const spinner = await Spinner.findOneAndUpdate(
+    { _id: spinnerId, spins: { $elemMatch: spinMatch } },
+    { $set: { 'spins.$.used': true, 'spins.$.usedAt': new Date() } },
+    { new: true }
+  );
+
+  if (!spinner) {
+    return null;
+  }
+
+  const claimedSpin = (spinner.spins || [])
+    .filter((spin) => spin.user === ownerId && spin.used && (!hasIndex || spin.segmentIndex === segmentIndex))
+    .sort((a, b) => new Date(b.usedAt) - new Date(a.usedAt))[0];
+
+  const claimedIndex = claimedSpin ? claimedSpin.segmentIndex : segmentIndex;
+  const segment = (spinner.segments || [])[claimedIndex];
+
+  return {
+    spinner,
+    spin: claimedSpin,
+    segment,
+    segmentIndex: claimedIndex,
+  };
+};
+
+/**
+ * Put a claimed reward back when the order could not be created.
+ * @param {string} spinnerId
+ * @param {string} userId
+ * @param {number} segmentIndex
+ * @returns {Promise<void>}
+ */
+const releaseSpinReward = async (spinnerId, userId, segmentIndex) => {
+  if (!mongoose.Types.ObjectId.isValid(String(spinnerId || ''))) {
+    return;
+  }
+
+  await Spinner.updateOne(
+    {
+      _id: spinnerId,
+      spins: {
+        $elemMatch: {
+          user: String(userId),
+          segmentIndex,
+          used: true,
+          orderId: { $in: ['', null] },
+        },
+      },
+    },
+    { $set: { 'spins.$.used': false, 'spins.$.usedAt': null } }
+  );
+};
+
+/**
+ * Remember which order redeemed the reward for the admin claims view.
+ * @returns {Promise<void>}
+ */
+const attachRewardToOrder = async (spinnerId, userId, segmentIndex, orderId, discountAmount) => {
+  if (!mongoose.Types.ObjectId.isValid(String(spinnerId || ''))) {
+    return;
+  }
+
+  await Spinner.updateOne(
+    {
+      _id: spinnerId,
+      spins: { $elemMatch: { user: String(userId), segmentIndex, used: true } },
+    },
+    {
+      $set: {
+        'spins.$.orderId': String(orderId),
+        'spins.$.discountAmount': Math.max(Number(discountAmount) || 0, 0),
+      },
+    }
+  );
+};
+
 module.exports = {
   createSpinner,
   createDefaultSpinner,
@@ -379,4 +565,9 @@ module.exports = {
   toPublicSpinner,
   pickSegmentIndex,
   spinSpinner,
+  calculateRewardDiscount,
+  getUserReward,
+  claimSpinReward,
+  releaseSpinReward,
+  attachRewardToOrder,
 };
