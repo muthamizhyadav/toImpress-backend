@@ -84,7 +84,7 @@ const createOrder = async (req) => {
     }
   }
 
-  const totalDiscount = Math.round((Number(discount) || 0) + spinnerDiscount);
+  const totalDiscount = (Number(discount) || 0) + spinnerDiscount;
   totalAmount += (shippingCost || 0) + (tax || 0) - totalDiscount;
 
   const shipAddr = Array.isArray(shippingAddress) ? shippingAddress[0] : shippingAddress;
