@@ -51,7 +51,7 @@ module.exports = router;
  * /spinners:
  *   post:
  *     summary: Create a spin-the-wheel campaign
- *     description: Admin only. Reward types include threshold_discount (Buy ₹2000 get ₹30 off), category/product scoped campaigns and event based campaigns via eventName.
+ *     description: Admin only. Reward types include threshold_discount (Buy ₹2000 get ₹30 off), category/product scoped campaigns and event based campaigns via eventName. Each segment can also map its reward to a category or product with mapType plus categoryId/categoryName or productId/productName; the storefront uses that mapping to redirect winners to the relevant listing page.
  *   get:
  *     summary: List spinners (paginated)
  *     description: Admin only.

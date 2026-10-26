@@ -28,6 +28,11 @@ const segmentSchema = Joi.object().keys({
     .pattern(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
   probability: Joi.number().min(0).optional(),
+  mapType: Joi.string().valid('none', 'category', 'product').optional(),
+  categoryId: Joi.string().allow('').optional(),
+  categoryName: Joi.string().allow('').optional(),
+  productId: Joi.string().allow('').optional(),
+  productName: Joi.string().allow('').optional(),
 });
 
 const spinnerBodyKeys = {

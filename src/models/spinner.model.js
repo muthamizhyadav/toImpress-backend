@@ -47,6 +47,28 @@ const segmentSchema = new mongoose.Schema(
       default: 1,
       min: 0,
     },
+    // Optional mapping of this reward to a category or product
+    mapType: {
+      type: String,
+      enum: ['none', 'category', 'product'],
+      default: 'none',
+    },
+    categoryId: {
+      type: String,
+      default: '',
+    },
+    categoryName: {
+      type: String,
+      default: '',
+    },
+    productId: {
+      type: String,
+      default: '',
+    },
+    productName: {
+      type: String,
+      default: '',
+    },
     winCount: {
       type: Number,
       default: 0,
