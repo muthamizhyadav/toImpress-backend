@@ -1,5 +1,6 @@
 const httpStatus = require('http-status');
-const { Cart, Product } = require('../models');
+const { Cart, Product, Coupon } = require('../models');
+const { getBestCouponDiscount } = require('./coupon.service');
 const ApiError = require('../utils/ApiError');
 const { log } = require('../config/logger');
 
@@ -206,7 +207,7 @@ const clearCart = async (userId) => {
   return null;
 };
 const getCart = async (userId) => {
-  let cart = await Cart.aggregate([
+  const cart = await Cart.aggregate([
     {
       $match: { user: userId },
     },
@@ -222,28 +223,6 @@ const getCart = async (userId) => {
       $unwind: { path: '$productDetails', preserveNullAndEmptyArrays: true },
     },
     {
-      $lookup: {
-        from: 'coupons',
-        let: { productId: '$product' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $in: ['$$productId', '$products'] },
-                  { $eq: ['$isActive', true] },
-                ],
-              },
-            },
-          },
-        ],
-        as: 'availableCoupons',
-      },
-    },
-    {
-      $unwind: { path: '$availableCoupons', preserveNullAndEmptyArrays: true },
-    },
-    {
       $project: {
         _id: 1,
         productName: '$productDetails.productTitle',
@@ -252,23 +231,9 @@ const getCart = async (userId) => {
         itemqty: 1,
         price: '$productDetails.price',
         salePrice: '$productDetails.salePrice',
+        category: '$productDetails.category',
         image: 1,
         product: 1,
-        couponDiscount: { $ifNull: ['$availableCoupons.discount', null] },
-        couponOfferDiscount: { $ifNull: ['$availableCoupons.offerDiscount', null] },
-        couponType: { $ifNull: ['$availableCoupons.type', null] },
-        isOfferAvailable: {
-          $cond: {
-            if: {
-              $and: [
-                { $ne: ['$availableCoupons', null] },
-                { $ne: [{ $ifNull: ['$availableCoupons.type', null] }, null] },
-              ],
-            },
-            then: true,
-            else: false,
-          },
-        },
         discountPercentage: {
           $cond: [
             { $gt: ['$productDetails.price', 0] },
@@ -300,11 +265,8 @@ const getCart = async (userId) => {
         selectedColor: { $first: '$selectedColor' },
         price: { $first: '$price' },
         salePrice: { $first: '$salePrice' },
+        category: { $first: '$category' },
         image: { $first: '$image' },
-        couponDiscount: { $first: '$couponDiscount' },
-        couponOfferDiscount: { $first: '$couponOfferDiscount' },
-        couponType: { $first: '$couponType' },
-        isOfferAvailable: { $first: '$isOfferAvailable' },
         discountPercentage: { $first: '$discountPercentage' },
         itemqty: { $first: '$itemqty' },
       },
@@ -315,61 +277,53 @@ const getCart = async (userId) => {
   // After aggregation, do calculations
   // --------------------------
 
-  let couponsProduct = cart.filter((item) => item.isOfferAvailable);
-  let allProduct = cart.length > 0 ? cart.reduce((sum, item) => sum + item.salePrice * item.itemqty, 0) : 0;
+  const pricedItems = cart.map((item) => ({
+    productId: String(item._id ?? item.product),
+    total: (Number(item.salePrice) || 0) * (Number(item.itemqty) || 0),
+    category: item.category,
+  }));
 
-  let totalSalesPrice =
-    couponsProduct.length > 0
-      ? couponsProduct.reduce((acc, item) => {
-          const price = Number(item.salePrice * item.itemqty) || 0;
-          return acc + price;
-        }, 0)
-      : 0;
+  const totalPrice = pricedItems.reduce((sum, item) => sum + item.total, 0);
+  const productIds = pricedItems.map((item) => item.productId);
 
-  let totalPrice =
-    cart.length > 0
-      ? cart.reduce((acc, item) => {
-          const price = Number(item.salePrice * item.itemqty) || 0;
-          return acc + price;
-        }, 0)
-      : 0;
+  // Only coupons linked to a product in the cart (product and auto coupons)
+  // can be applied automatically.
+  const coupons = productIds.length
+    ? await Coupon.find({ isActive: true, products: { $in: productIds } })
+    : [];
 
-  let couponAmount = couponsProduct.length > 0 ? couponsProduct[0].couponDiscount : 0;
-  let type = couponsProduct?.length ? couponsProduct[0].couponType : null;
-  let discountvalue = couponsProduct?.length ? couponsProduct[0].couponOfferDiscount : null;
+  const best = getBestCouponDiscount(coupons, pricedItems, totalPrice);
+  const eligibleProductIds = best ? best.eligibleProductIds : [];
+  const discount = best ? best.discount : 0;
 
-  let isDiscountApplicable = couponsProduct.length > 0 ? totalSalesPrice >= couponAmount : false;
-  let discountedAmount = 0;
-  let minusValue = 0;
+  const data = cart.map((item) => {
+    const isOfferAvailable = eligibleProductIds.includes(String(item._id ?? item.product));
 
-  if (isDiscountApplicable) {
-    if (type === 'percentage' && totalSalesPrice >= couponAmount) {
-      const discountPercent = parseFloat(discountvalue) / 100;
-      const calculatedDiscount = totalSalesPrice * discountPercent;
-      const discount = Math.min(calculatedDiscount, couponAmount);
-      discountedAmount = totalPrice - discount;
-      minusValue = discount;
-    } else if (couponAmount > 0 && totalSalesPrice > couponAmount) {
-      discountedAmount = totalPrice - couponAmount;
-      minusValue = couponAmount;
-    }
-  } else {
-    discountedAmount = allProduct;
-  }
+    return {
+      ...item,
+      isOfferAvailable,
+      couponCode: isOfferAvailable && best ? best.coupon.code : null,
+      couponDiscount: isOfferAvailable && best ? best.coupon.discount : null,
+      couponOfferDiscount: isOfferAvailable && best ? best.coupon.offerDiscount : null,
+      couponType: isOfferAvailable && best ? best.coupon.type : null,
+    };
+  });
 
-  const totalAmt = Math.round(discountedAmount);
-  const gst = Math.round(parseFloat((totalAmt * 0.05).toFixed(2)));
+  const totalAmt = Math.max(Math.round(totalPrice - discount), 0);
 
   return {
-    data: cart,
-    couponsProduct,
+    data,
+    couponsProduct: data.filter((item) => item.isOfferAvailable),
     totalSalesPrice: totalPrice,
-    couponAmount,
-    type,
-    discountvalue,
-    isDiscountApplicable,
+    couponCode: best ? best.coupon.code : null,
+    couponFor: best ? best.coupon.couponFor : null,
+    couponAmount: best ? best.threshold : 0,
+    type: best ? best.coupon.type : null,
+    discountvalue: best && best.coupon.type === 'percentage' ? best.percent : 0,
+    discountAmount: discount,
+    isDiscountApplicable: discount > 0,
     finalAmount: totalAmt,
-    minusValue,
+    minusValue: discount,
     gst: 0,
   };
 };

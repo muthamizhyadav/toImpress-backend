@@ -106,8 +106,8 @@ const validateCoupon = async (code, cartTotal = 0, productIds = []) => {
 
   // Check product eligibility for product coupons
   if (coupon.couponFor === 'product' && coupon.products.length > 0) {
-    const couponProductIds = coupon.products.map((p) => p._id.toString());
-    const hasEligibleProduct = productIds.some((productId) => couponProductIds.includes(productId.toString()));
+    const couponProductIds = getCouponProductIds(coupon.products);
+    const hasEligibleProduct = productIds.some((productId) => couponProductIds.includes(String(productId)));
 
     if (!hasEligibleProduct) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'No eligible products in cart for this coupon');
@@ -192,42 +192,175 @@ const getActiveCouponsForProduct = async (productId) => {
     ],
   });
 };
+
+/**
+ * Normalise the products stored on a coupon to an array of string ids.
+ * @param {Array} products
+ * @returns {Array<string>}
+ */
+const getCouponProductIds = (products = []) => products.map((product) => String(product?._id ?? product));
+
+/**
+ * Pick the cart lines a coupon can discount.
+ * @param {Object} coupon
+ * @param {Array<{productId: string, total: number, category?: string}>} items
+ * @returns {Array}
+ */
+const getEligibleItems = (coupon, items) => {
+  if (coupon.couponFor === 'product') {
+    const productIds = getCouponProductIds(coupon.products || []);
+    if (productIds.length === 0) return items;
+    return items.filter((item) => productIds.includes(String(item.productId)));
+  }
+
+  if (coupon.category) {
+    const categoryItems = items.filter((item) => item.category === coupon.category);
+    if (categoryItems.length > 0) return categoryItems;
+  }
+
+  return items;
+};
+
+/**
+ * Calculate the discount a single coupon gives for the supplied cart lines.
+ *
+ * Product coupons use their own discount value on the eligible products,
+ * min-purchase coupons apply to the eligible total once the threshold is met,
+ * and auto coupons keep using discount (threshold) + offerDiscount (percentage).
+ *
+ * @param {Object} coupon
+ * @param {Array<{productId: string, total: number, category?: string}>} items
+ * @param {number} cartTotal
+ * @returns {Object|null}
+ */
+const calculateCouponDiscount = (coupon, items = [], cartTotal = 0) => {
+  if (!coupon || coupon.isActive === false) return null;
+
+  const eligibleItems = getEligibleItems(coupon, items);
+  const eligibleTotal = eligibleItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+  if (eligibleTotal <= 0) return null;
+
+  const total = Number(cartTotal) || eligibleTotal;
+  const discountValue = Number(coupon.discount) || 0;
+  let discount = 0;
+  let percent = 0;
+  let threshold = eligibleTotal;
+
+  if (coupon.couponFor === 'product') {
+    if (coupon.type === 'percentage') {
+      percent = discountValue;
+      discount = (eligibleTotal * percent) / 100;
+    } else {
+      discount = Math.min(discountValue, eligibleTotal);
+    }
+  } else if (coupon.couponFor === 'minPurchase') {
+    threshold = Number(coupon.minPurchaseAmount ?? coupon.discount ?? 0);
+    if (total < threshold) return null;
+
+    if (coupon.type === 'percentage') {
+      percent = discountValue;
+      discount = (eligibleTotal * percent) / 100;
+    } else {
+      discount = Math.min(discountValue, eligibleTotal);
+    }
+  } else {
+    // Auto coupons: discount stores the minimum cart value and
+    // offerDiscount stores the percentage, offerAmount an optional flat value.
+    threshold = discountValue;
+    if (threshold > 0 && total < threshold) return null;
+
+    const offeredPercent = Number(coupon.offerDiscount);
+    const offeredAmount = Number(coupon.offerAmount);
+
+    if (coupon.type === 'percentage' || (!coupon.type && offeredPercent > 0)) {
+      if (!(offeredPercent > 0)) return null;
+      percent = offeredPercent;
+      discount = (eligibleTotal * percent) / 100;
+    } else if (offeredAmount > 0) {
+      discount = Math.min(offeredAmount, eligibleTotal);
+    } else if (discountValue > 0) {
+      discount = Math.min(discountValue, eligibleTotal);
+    } else {
+      return null;
+    }
+
+    if (threshold > 0) {
+      discount = Math.min(discount, threshold);
+    }
+  }
+
+  discount = Math.round(Math.min(discount, eligibleTotal, total) * 100) / 100;
+  if (!(discount > 0)) return null;
+
+  return {
+    coupon,
+    discount,
+    eligibleTotal,
+    threshold,
+    percent,
+    eligibleProductIds: eligibleItems.map((item) => String(item.productId)),
+  };
+};
+
+/**
+ * Get the best coupon discount for a set of cart lines.
+ * @param {Array<Object>} coupons
+ * @param {Array<{productId: string, total: number, category?: string}>} items
+ * @param {number} cartTotal
+ * @returns {Object|null}
+ */
+const getBestCouponDiscount = (coupons = [], items = [], cartTotal = 0) => {
+  let best = null;
+
+  coupons.forEach((coupon) => {
+    const result = calculateCouponDiscount(coupon, items, cartTotal);
+    if (result && (!best || result.discount > best.discount)) {
+      best = result;
+    }
+  });
+
+  return best;
+};
+
 const getCouponByProductAndAmount = async (body) => {
   const results = [];
 
   for (const item of body) {
-    const { category, ids, total } = item;
+    const { category, ids = [], total = 0 } = item;
+    if (!Array.isArray(ids) || ids.length === 0) continue;
 
-    const coupon = await Coupon.findOne({
+    const coupons = await Coupon.find({
       products: { $in: ids },
-      discount: { $lte: total },
       isActive: true,
-    }).sort({ discount: -1 });
+    });
 
-    if (coupon) {
-      let finalDiscount = 0;
+    // The endpoint only receives a grouped total, split it across the lines so
+    // product coupons are calculated on their own share.
+    const perItemTotal = Number(total) / ids.length;
+    const pricedItems = ids.map((productId) => ({
+      productId,
+      total: perItemTotal,
+      category,
+    }));
 
-      if (coupon.type === 'percentage') {
-        const percentage = parseFloat(coupon.offerDiscount || 0);
-        finalDiscount = Math.floor((total * percentage) / 100);
-      } else {
-        finalDiscount = coupon.discount;
-      }
+    const best = getBestCouponDiscount(coupons, pricedItems, Number(total));
+    if (!best) continue;
 
-      const netAmount = Math.max(total - finalDiscount, 0);
-
-      results.push({
-        category,
-        total,
-        finalDiscount,
-        netAmount,
-        discount: coupon.offerDiscount,
-        type: coupon.type,
-      });
-    }
+    results.push({
+      category,
+      total: Number(total),
+      finalDiscount: best.discount,
+      netAmount: Math.max(Number(total) - best.discount, 0),
+      discount: best.percent || best.coupon.discount,
+      type: best.coupon.type,
+      couponCode: best.coupon.code,
+    });
   }
 
-  return {coupenDetails:results, totalDiscount: results.reduce((acc, curr) => acc + curr.finalDiscount, 0)};
+  return {
+    coupenDetails: results,
+    totalDiscount: Math.round(results.reduce((acc, curr) => acc + curr.finalDiscount, 0) * 100) / 100,
+  };
 };
 
 module.exports = {
@@ -242,4 +375,6 @@ module.exports = {
   incrementUsageCount,
   getActiveCouponsForProduct,
   getCouponByProductAndAmount,
+  calculateCouponDiscount,
+  getBestCouponDiscount,
 };
