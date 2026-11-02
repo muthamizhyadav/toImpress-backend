@@ -286,11 +286,19 @@ const getCart = async (userId) => {
   const totalPrice = pricedItems.reduce((sum, item) => sum + item.total, 0);
   const productIds = pricedItems.map((item) => item.productId);
 
-  // Only coupons linked to a product in the cart (product and auto coupons)
-  // can be applied automatically.
-  const coupons = productIds.length
-    ? await Coupon.find({ isActive: true, products: { $in: productIds } })
-    : [];
+  // Product coupons only discount their linked products, while cart-level
+  // coupons (minPurchase, auto and product coupons with an empty product list)
+  // apply to the whole cart. Every active coupon has to be considered, not
+  // only the ones that list a cart product, otherwise cart-level coupons
+  // created in the admin never reach the storefront.
+  const coupons = await Coupon.find({
+    isActive: true,
+    $or: [
+      { products: { $size: 0 } },
+      { products: { $in: productIds } },
+      { couponFor: { $in: ['minPurchase', 'auto'] } },
+    ],
+  });
 
   const best = getBestCouponDiscount(coupons, pricedItems, totalPrice);
   const eligibleProductIds = best ? best.eligibleProductIds : [];

@@ -54,8 +54,14 @@ const updateCouponById = async (couponId, updateBody) => {
   if (!coupon) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');
   }
-  if (updateBody.code && (await Coupon.isCodeTaken(updateBody.code, couponId))) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon code already taken');
+  if (updateBody.code) {
+    const duplicate = await Coupon.findOne({
+      code: updateBody.code.toUpperCase(),
+      _id: { $ne: couponId },
+    });
+    if (duplicate) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Coupon code already taken');
+    }
   }
   Object.assign(coupon, updateBody);
   await coupon.save();
@@ -181,7 +187,7 @@ const getActiveCouponsForProduct = async (productId) => {
   return Coupon.find({
     isActive: true,
     $or: [
-      { couponFor: 'minPurchase' },
+      { couponFor: { $in: ['minPurchase', 'auto'] } },
       {
         couponFor: 'product',
         $or: [

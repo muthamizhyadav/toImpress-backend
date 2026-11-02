@@ -1,13 +1,22 @@
 const Joi = require('joi');
-const { objectId } = require('./custom.validation');
 
 const createCoupon = {
   body: Joi.object().keys({
-    code: Joi.string().required().min(3).max(20).uppercase().trim(),
+    // Auto coupons are applied automatically, so they do not need a code.
+    code: Joi.string().min(3).max(20).uppercase().trim().when('couponFor', {
+      is: 'auto',
+      then: Joi.optional(),
+      otherwise: Joi.required()
+    }),
     discount: Joi.number().required().min(0),
     type: Joi.string().required().valid('percentage', 'fixed'),
-    couponFor: Joi.string().required().valid('product', 'minPurchase'),
-    products: Joi.array().items(Joi.string().custom(objectId)).optional().default([]),
+    couponFor: Joi.string().required().valid('product', 'minPurchase', 'auto'),
+    // Product ids are UUID strings, not mongo ObjectIds.
+    products: Joi.array().items(Joi.string()).optional().default([]),
+    category: Joi.string().allow('', null).optional(),
+    discountName: Joi.string().allow('', null).optional(),
+    offerAmount: Joi.alternatives().try(Joi.number(), Joi.string().allow('', null)).optional(),
+    offerDiscount: Joi.alternatives().try(Joi.number(), Joi.string().allow('', null)).optional(),
     minPurchaseAmount: Joi.number().min(0).when('couponFor', {
       is: 'minPurchase',
       then: Joi.required(),
@@ -16,8 +25,9 @@ const createCoupon = {
     isActive: Joi.boolean().default(true),
     maxUsage: Joi.number().min(1).allow(null).default(null)
   }).custom((value, helpers) => {
-    // Custom validation for percentage discount
-    if (value.type === 'percentage' && value.discount > 100) {
+    // Custom validation for percentage discount (auto coupons keep their
+    // minimum cart value in `discount`, so the percentage limit does not apply)
+    if (value.couponFor !== 'auto' && value.type === 'percentage' && value.discount > 100) {
       return helpers.error('any.invalid', { message: 'Percentage discount cannot be more than 100%' });
     }
     return value;
@@ -38,7 +48,7 @@ const getCoupons = {
 
 const getCoupon = {
   params: Joi.object().keys({
-    couponId: Joi.string().custom(objectId),
+    couponId: Joi.string().required(),
   }),
 };
 
@@ -50,23 +60,28 @@ const getCouponByCode = {
 
 const updateCoupon = {
   params: Joi.object().keys({
-    couponId: Joi.required().custom(objectId),
+    couponId: Joi.string().required(),
   }),
   body: Joi.object()
     .keys({
       code: Joi.string().min(3).max(20).uppercase().trim(),
       discount: Joi.number().min(0),
       type: Joi.string().valid('percentage', 'fixed'),
-      couponFor: Joi.string().valid('product', 'minPurchase'),
-      products: Joi.array().items(Joi.string().custom(objectId)).optional(),
+      couponFor: Joi.string().valid('product', 'minPurchase', 'auto'),
+      products: Joi.array().items(Joi.string()).optional(),
+      category: Joi.string().allow('', null),
+      discountName: Joi.string().allow('', null),
+      offerAmount: Joi.alternatives().try(Joi.number(), Joi.string().allow('', null)),
+      offerDiscount: Joi.alternatives().try(Joi.number(), Joi.string().allow('', null)),
       minPurchaseAmount: Joi.number().min(0),
       isActive: Joi.boolean(),
       maxUsage: Joi.number().min(1).allow(null)
     })
     .min(1)
     .custom((value, helpers) => {
-      // Custom validation for percentage discount
-      if (value.type === 'percentage' && value.discount > 100) {
+      // Custom validation for percentage discount (auto coupons keep their
+      // minimum cart value in `discount`, so the percentage limit does not apply)
+      if (value.couponFor !== 'auto' && value.type === 'percentage' && value.discount > 100) {
         return helpers.error('any.invalid', { message: 'Percentage discount cannot be more than 100%' });
       }
       // Validate minPurchaseAmount for minPurchase coupons
@@ -79,7 +94,7 @@ const updateCoupon = {
 
 const deleteCoupon = {
   params: Joi.object().keys({
-    couponId: Joi.string().custom(objectId),
+    couponId: Joi.string().required(),
   }),
 };
 
@@ -87,7 +102,7 @@ const validateCoupon = {
   body: Joi.object().keys({
     code: Joi.string().required().min(3).max(20).uppercase().trim(),
     cartTotal: Joi.number().min(0),
-    productIds: Joi.array().items(Joi.string().custom(objectId))
+    productIds: Joi.array().items(Joi.string())
   }),
 };
 
@@ -95,7 +110,7 @@ const applyCoupon = {
   body: Joi.object().keys({
     code: Joi.string().required().min(3).max(20).uppercase().trim(),
     cartTotal: Joi.number().required().min(0),
-    productIds: Joi.array().items(Joi.string().custom(objectId)).required()
+    productIds: Joi.array().items(Joi.string()).required()
   }),
 };
 

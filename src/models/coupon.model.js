@@ -44,6 +44,9 @@ const couponSchema = new mongoose.Schema(
     category: {
       type: String,
     },
+    discountName: {
+      type: String,
+    },
 
     offerAmount: {
       type: String,
