@@ -23,9 +23,9 @@ router
 
 router
   .route('/validate')
-  .post(auth('getCoupons'), validate(couponValidation.validateCoupon), couponController.validateCoupon);
+  .post(validate(couponValidation.validateCoupon), couponController.validateCoupon);
 
-router.route('/apply').post(auth('getCoupons'), validate(couponValidation.applyCoupon), couponController.applyCoupon);
+router.route('/apply').post(validate(couponValidation.applyCoupon), couponController.applyCoupon);
 
 router.route('/product/:productId').get(auth('getCoupons'), couponController.getActiveCouponsForProduct);
 
