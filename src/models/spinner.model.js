@@ -100,6 +100,10 @@ const spinLogSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    couponCode: {
+      type: String,
+      default: '',
+    },
     // Set when the customer redeems this reward on an order.
     used: {
       type: Boolean,

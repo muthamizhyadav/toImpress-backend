@@ -1,6 +1,7 @@
 const httpStatus = require('http-status');
 const { Cart, Product, Coupon, Category } = require('../models');
-const { getBestCouponDiscount, getCategoryIdentifiers } = require('./coupon.service');
+const { getBestCouponDiscount, getCategoryIdentifiers, doesCategoryMatch } = require('./coupon.service');
+const spinnerService = require('./spinner.service');
 const ApiError = require('../utils/ApiError');
 const { log } = require('../config/logger');
 
@@ -277,7 +278,33 @@ const getCart = async (userId) => {
   // After aggregation, do calculations
   // --------------------------
 
+  // Check if customer has an active unredeemed spin reward
+  const spinnerReward = userId ? await spinnerService.getUserReward(userId) : null;
+  const spinCouponCode = spinnerReward
+    ? (spinnerReward.couponCode ||
+       `DIWALI${spinnerReward.value ? `-${String(spinnerReward.value).replace(/[^0-9]/g, '')}` : ''}-${String(userId).replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`)
+    : null;
+
+  const baseSpinCouponObj = spinnerReward
+    ? {
+        _id: `spinner-${spinnerReward.spinnerId}-${spinnerReward.segmentIndex}`,
+        code: spinCouponCode,
+        discount: Number(spinnerReward.value) || 0,
+        type: spinnerReward.rewardType === 'percent_discount' ? 'percentage' : 'fixed',
+        couponFor: spinnerReward.mapType === 'category' ? 'category' : 'spinner',
+        category: spinnerReward.categoryId || undefined,
+        discountName: spinnerReward.label || 'Spin & Win Reward',
+        minPurchaseAmount: spinnerReward.minOrderAmount || 0,
+        isActive: true,
+        isSpinnerReward: true,
+        label: spinnerReward.label,
+        isEligible: false,
+        discountAmount: 0,
+      }
+    : null;
+
   if (!cart || cart.length === 0) {
+    const emptyCoupons = baseSpinCouponObj ? [baseSpinCouponObj] : [];
     return {
       data: [],
       couponsProduct: [],
@@ -292,8 +319,18 @@ const getCart = async (userId) => {
       finalAmount: 0,
       minusValue: 0,
       gst: 0,
-      coupons: [],
-      availableCoupons: [],
+      coupons: emptyCoupons,
+      availableCoupons: emptyCoupons,
+      spinnerReward: spinnerReward
+        ? {
+            ...spinnerReward,
+            couponCode: spinCouponCode,
+            isEligible: false,
+            discountAmount: 0,
+            shortfall: Number(spinnerReward.minOrderAmount) || 0,
+          }
+        : null,
+      spinnerDiscount: 0,
     };
   }
 
@@ -345,6 +382,63 @@ const getCart = async (userId) => {
   });
   const cartApplicableCoupons = Array.from(applicableCouponsMap.values());
 
+  // Calculate spin reward discount if customer has an active unredeemed reward
+  let spinnerDiscount = 0;
+  let isSpinnerEligible = true;
+  let spinnerShortfall = 0;
+  let spinCouponObj = null;
+
+  if (spinnerReward) {
+    let eligibleItems = pricedItems;
+    if (spinnerReward.mapType === 'category' && spinnerReward.categoryId) {
+      eligibleItems = pricedItems.filter((item) =>
+        doesCategoryMatch(item.category, spinnerReward.categoryId, categories)
+      );
+    }
+
+    const eligibleTotal = eligibleItems.reduce((sum, item) => sum + item.total, 0);
+    const minOrderAmount = Number(spinnerReward.minOrderAmount) || 0;
+
+    if (minOrderAmount > 0 && totalPrice < minOrderAmount) {
+      isSpinnerEligible = false;
+      spinnerShortfall = Math.ceil(minOrderAmount - totalPrice);
+    } else if (spinnerReward.mapType === 'category' && spinnerReward.categoryId && eligibleItems.length === 0) {
+      isSpinnerEligible = false;
+    }
+
+    if (isSpinnerEligible && totalPrice > 0) {
+      const val = Number.parseFloat(spinnerReward.value) || 0;
+      const baseForDiscount = eligibleItems.length > 0 ? eligibleTotal : totalPrice;
+      if (spinnerReward.rewardType === 'percent_discount') {
+        spinnerDiscount = Math.round((baseForDiscount * val) / 100);
+      } else {
+        spinnerDiscount = Math.min(baseForDiscount, Math.round(val));
+      }
+    }
+
+    const spinCouponCode =
+      spinnerReward.couponCode ||
+      `DIWALI${spinnerReward.value ? `-${String(spinnerReward.value).replace(/[^0-9]/g, '')}` : ''}-${String(userId).replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase()}`;
+
+    spinCouponObj = {
+      _id: `spinner-${spinnerReward.spinnerId}-${spinnerReward.segmentIndex}`,
+      code: spinCouponCode,
+      discount: Number(spinnerReward.value) || 0,
+      type: spinnerReward.rewardType === 'percent_discount' ? 'percentage' : 'fixed',
+      couponFor: spinnerReward.mapType === 'category' ? 'category' : 'spinner',
+      category: spinnerReward.categoryId || undefined,
+      discountName: spinnerReward.label || 'Spin & Win Reward',
+      minPurchaseAmount: spinnerReward.minOrderAmount || 0,
+      isActive: true,
+      isSpinnerReward: true,
+      label: spinnerReward.label,
+      isEligible: isSpinnerEligible,
+      discountAmount: spinnerDiscount,
+    };
+
+    cartApplicableCoupons.unshift(spinCouponObj);
+  }
+
   const data = cart.map((item) => {
     const itemId = String(item._id ?? item.product);
 
@@ -353,6 +447,18 @@ const getCart = async (userId) => {
       calc.eligibleProductIds && calc.eligibleProductIds.includes(itemId)
     );
     const itemCoupons = itemCalculations.map((calc) => calc.coupon);
+
+    let itemHasSpinner = false;
+    if (spinnerReward && spinCouponObj) {
+      const matchesSpinnerCategory =
+        !spinnerReward.categoryId ||
+        doesCategoryMatch(item.category, spinnerReward.categoryId, categories);
+      if (matchesSpinnerCategory) {
+        itemCoupons.unshift(spinCouponObj);
+        itemHasSpinner = true;
+      }
+    }
+
     const isOfferAvailable = itemCoupons.length > 0;
 
     // Pick best calculation for this item if best applies, otherwise candidate
@@ -360,16 +466,28 @@ const getCart = async (userId) => {
       itemCalculations.find((calc) => best && String(calc.coupon._id) === String(best.coupon._id)) ||
       itemCalculations[0];
 
-    const couponCode = itemBestCalc ? itemBestCalc.coupon.code || null : null;
+    const couponCode = itemBestCalc
+      ? itemBestCalc.coupon.code || null
+      : itemHasSpinner
+      ? spinCouponObj.code
+      : null;
     const couponDiscount = itemBestCalc
       ? itemBestCalc.threshold || itemBestCalc.coupon.discount || null
+      : itemHasSpinner
+      ? spinCouponObj.discount
       : null;
     const couponOfferDiscount = itemBestCalc
       ? itemBestCalc.percent
         ? String(itemBestCalc.percent)
         : itemBestCalc.coupon.offerDiscount || String(itemBestCalc.coupon.discount) || null
+      : itemHasSpinner
+      ? String(spinCouponObj.discount)
       : null;
-    const couponType = itemBestCalc ? itemBestCalc.coupon.type || null : null;
+    const couponType = itemBestCalc
+      ? itemBestCalc.coupon.type || null
+      : itemHasSpinner
+      ? spinCouponObj.type
+      : null;
 
     return {
       ...item,
@@ -380,6 +498,7 @@ const getCart = async (userId) => {
       couponType,
       coupons: itemCoupons,
       availableCoupons: itemCoupons,
+      spinnerReward: itemHasSpinner ? spinnerReward : null,
     };
   });
 
@@ -404,6 +523,15 @@ const getCart = async (userId) => {
     gst: 0,
     coupons: cartApplicableCoupons,
     availableCoupons: cartApplicableCoupons,
+    spinnerReward: spinnerReward
+      ? {
+          ...spinnerReward,
+          isEligible: isSpinnerEligible,
+          discountAmount: spinnerDiscount,
+          shortfall: spinnerShortfall,
+        }
+      : null,
+    spinnerDiscount,
   };
 };
 

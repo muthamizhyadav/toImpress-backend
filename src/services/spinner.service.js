@@ -1,6 +1,6 @@
 const httpStatus = require('http-status');
 const mongoose = require('mongoose');
-const { Spinner, User } = require('../models');
+const { Spinner, User, Coupon } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { DEFAULT_SPINNER } = require('../config/spinOffers');
 
@@ -311,12 +311,37 @@ const spinSpinner = async (spinnerId, userId, context = {}) => {
   const storedSegment = spinner.segments[winningIndex];
   const now = new Date();
 
+  const cleanVal = String(storedSegment.value || '').replace(/[^0-9]/g, '');
+  const userSuffix = ownerId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase() || 'SPIN';
+  const couponCode = `DIWALI${cleanVal ? `-${cleanVal}` : ''}-${userSuffix}`;
+
+  try {
+    const existingCoupon = await Coupon.findOne({ code: couponCode });
+    if (!existingCoupon) {
+      await Coupon.create({
+        code: couponCode,
+        discount: Number(storedSegment.value) || 0,
+        type: storedSegment.rewardType === 'percent_discount' ? 'percentage' : 'fixed',
+        couponFor: storedSegment.mapType === 'category' && storedSegment.categoryId ? 'category' : 'all',
+        category: storedSegment.mapType === 'category' && storedSegment.categoryId ? storedSegment.categoryId : undefined,
+        discountName: storedSegment.label || 'Spin & Win Reward',
+        minPurchaseAmount: storedSegment.minOrderAmount || 0,
+        isActive: true,
+        maxUsage: 1,
+        usageCount: 0,
+      });
+    }
+  } catch (err) {
+    // ignore duplicate
+  }
+
   const spinLog = {
     user: ownerId,
     segmentIndex: winningIndex,
     segmentLabel: storedSegment.label,
     rewardType: storedSegment.rewardType,
     rewardValue: storedSegment.value,
+    couponCode,
     spunAt: now,
   };
 
@@ -376,6 +401,9 @@ const spinSpinner = async (spinnerId, userId, context = {}) => {
       productId: storedSegment.productId || '',
       productName: storedSegment.productName || '',
     },
+    couponCode,
+    claimCode: couponCode,
+    code: couponCode,
     spinCount: updatedSpinner.spinCount,
     usedSpins,
     remainingSpins,
@@ -451,6 +479,30 @@ const getUserReward = async (userId) => {
   const segmentIndex = spin.segmentIndex || 0;
   const segment = (spinner.segments || [])[segmentIndex];
 
+  const cleanVal = String((segment && segment.value) || spin.rewardValue || '').replace(/[^0-9]/g, '');
+  const userSuffix = ownerId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase() || 'SPIN';
+  const couponCode = spin.couponCode || `DIWALI${cleanVal ? `-${cleanVal}` : ''}-${userSuffix}`;
+
+  try {
+    const existing = await Coupon.findOne({ code: couponCode });
+    if (!existing) {
+      await Coupon.create({
+        code: couponCode,
+        discount: Number((segment && segment.value) || spin.rewardValue) || 0,
+        type: ((segment && segment.rewardType) || spin.rewardType) === 'percent_discount' ? 'percentage' : 'fixed',
+        couponFor: segment && segment.mapType === 'category' && segment.categoryId ? 'category' : 'all',
+        category: segment && segment.mapType === 'category' && segment.categoryId ? segment.categoryId : undefined,
+        discountName: (segment && segment.label) || spin.segmentLabel || 'Spin & Win Reward',
+        minPurchaseAmount: (segment && segment.minOrderAmount) || 0,
+        isActive: true,
+        maxUsage: 1,
+        usageCount: 0,
+      });
+    }
+  } catch (err) {
+    // ignore
+  }
+
   return {
     spinnerId: String(spinner._id),
     spinnerName: spinner.name,
@@ -458,6 +510,7 @@ const getUserReward = async (userId) => {
     label: (segment && segment.label) || spin.segmentLabel || '',
     rewardType: (segment && segment.rewardType) || spin.rewardType || '',
     value: segment && segment.value !== undefined ? segment.value : spin.rewardValue,
+    couponCode,
     minOrderAmount: (segment && segment.minOrderAmount) || 0,
     color: segment && segment.color,
     mapType: (segment && segment.mapType) || 'none',

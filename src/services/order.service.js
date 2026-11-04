@@ -64,23 +64,38 @@ const createOrder = async (req) => {
   let spinnerDiscount = 0;
   let rewardClaim = null;
 
-  if (spinnerId) {
+  let effectiveSpinnerId = spinnerId;
+  let effectiveSegmentIndex = spinnerSegmentIndex;
+
+  if (!effectiveSpinnerId) {
+    const unredeemed = await spinnerService.getUserReward(userId);
+    if (unredeemed) {
+      effectiveSpinnerId = unredeemed.spinnerId;
+      effectiveSegmentIndex = unredeemed.segmentIndex;
+    }
+  }
+
+  if (effectiveSpinnerId) {
     /*
      * Claim the reward before touching the order. The atomic claim inside the
      * service means the same spin can never discount two orders.
      */
-    rewardClaim = await spinnerService.claimSpinReward(spinnerId, userId, spinnerSegmentIndex);
-    if (!rewardClaim) {
+    rewardClaim = await spinnerService.claimSpinReward(effectiveSpinnerId, userId, effectiveSegmentIndex);
+    if (rewardClaim) {
+      spinnerDiscount = spinnerService.calculateRewardDiscount(rewardClaim.segment, cartTotal);
+      if (spinnerDiscount <= 0) {
+        await spinnerService.releaseSpinReward(effectiveSpinnerId, userId, rewardClaim.segmentIndex);
+        if (spinnerId) {
+          throw new ApiError(
+            httpStatus.BAD_REQUEST,
+            'Your cart total does not meet the minimum order value for this spin reward'
+          );
+        }
+        rewardClaim = null;
+        spinnerDiscount = 0;
+      }
+    } else if (spinnerId) {
       throw new ApiError(httpStatus.BAD_REQUEST, 'This spin reward is no longer available');
-    }
-
-    spinnerDiscount = spinnerService.calculateRewardDiscount(rewardClaim.segment, cartTotal);
-    if (spinnerDiscount <= 0) {
-      await spinnerService.releaseSpinReward(spinnerId, userId, rewardClaim.segmentIndex);
-      throw new ApiError(
-        httpStatus.BAD_REQUEST,
-        'Your cart total does not meet the minimum order value for this spin reward'
-      );
     }
   }
 
@@ -112,13 +127,13 @@ const createOrder = async (req) => {
   } catch (error) {
     // Never burn a customer's reward when the order itself failed.
     if (rewardClaim) {
-      await spinnerService.releaseSpinReward(spinnerId, userId, rewardClaim.segmentIndex);
+      await spinnerService.releaseSpinReward(effectiveSpinnerId, userId, rewardClaim.segmentIndex);
     }
     throw error;
   }
 
   if (rewardClaim) {
-    await spinnerService.attachRewardToOrder(spinnerId, userId, rewardClaim.segmentIndex, order._id, spinnerDiscount);
+    await spinnerService.attachRewardToOrder(effectiveSpinnerId, userId, rewardClaim.segmentIndex, order._id, spinnerDiscount);
   }
 
   // Update product stock quantities
