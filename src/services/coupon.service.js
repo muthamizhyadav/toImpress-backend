@@ -187,9 +187,33 @@ const validateCoupon = async (code, cartTotal = 0, productIds = []) => {
     }
   }
 
+  let discountAmount = 0;
+  const numTotal = Number(cartTotal) || 0;
+  if (coupon.type === 'percentage') {
+    discountAmount = numTotal > 0 ? (numTotal * coupon.discount) / 100 : coupon.discount;
+  } else if (coupon.type === 'fixed') {
+    discountAmount = numTotal > 0 ? Math.min(coupon.discount, numTotal) : coupon.discount;
+  } else {
+    discountAmount = Number(coupon.discount) || 0;
+  }
+
+  if (numTotal > 0) {
+    discountAmount = Math.min(discountAmount, numTotal);
+  }
+  discountAmount = Math.round(discountAmount * 100) / 100;
+  const finalAmount = numTotal > 0 ? Math.max(0, Math.round((numTotal - discountAmount) * 100) / 100) : 0;
+
   return {
     valid: true,
     coupon,
+    couponCode: coupon.code,
+    discountType: coupon.type,
+    discountValue: coupon.discount,
+    discountAmount,
+    discount: discountAmount,
+    originalAmount: numTotal,
+    finalAmount,
+    savings: discountAmount,
     message: 'Coupon is valid',
   };
 };
