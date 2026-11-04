@@ -526,17 +526,24 @@ const getCouponByProductAndAmount = async (body) => {
       category,
     }));
 
-    const { best } = getBestCouponDiscount(coupons, pricedItems, Number(total), categories);
-    if (!best) continue;
+    const { best, bestPotential } = getBestCouponDiscount(coupons, pricedItems, Number(total), categories);
+    const activeResult = best || bestPotential;
+    if (!activeResult) continue;
 
     results.push({
       category,
       total: Number(total),
-      finalDiscount: best.discount,
-      netAmount: Math.max(Number(total) - best.discount, 0),
-      discount: best.percent || best.coupon.discount,
-      type: best.coupon.type,
-      couponCode: best.coupon.code,
+      finalDiscount: best ? best.discount : 0,
+      netAmount: best ? Math.max(Number(total) - best.discount, 0) : Number(total),
+      discount: activeResult.percent || activeResult.coupon.discount,
+      type: activeResult.coupon.type,
+      couponCode: activeResult.coupon.code,
+      threshold: activeResult.threshold,
+      couponAmount: activeResult.threshold,
+      couponFor: activeResult.coupon.couponFor || 'auto',
+      discountName: activeResult.coupon.discountName || '',
+      offerDiscount: activeResult.percent ? String(activeResult.percent) : '',
+      isDiscountApplicable: Boolean(best && best.discount > 0),
     });
   }
 
