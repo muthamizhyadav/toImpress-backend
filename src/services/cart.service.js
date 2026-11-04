@@ -1,6 +1,6 @@
 const httpStatus = require('http-status');
-const { Cart, Product, Coupon } = require('../models');
-const { getBestCouponDiscount } = require('./coupon.service');
+const { Cart, Product, Coupon, Category } = require('../models');
+const { getBestCouponDiscount, getCategoryIdentifiers } = require('./coupon.service');
 const ApiError = require('../utils/ApiError');
 const { log } = require('../config/logger');
 
@@ -268,7 +268,7 @@ const getCart = async (userId) => {
         category: { $first: '$category' },
         image: { $first: '$image' },
         discountPercentage: { $first: '$discountPercentage' },
-        itemqty: { $first: '$itemqty' },
+        itemqty: { $sum: '$itemqty' },
       },
     },
   ]);
@@ -276,6 +276,26 @@ const getCart = async (userId) => {
   // --------------------------
   // After aggregation, do calculations
   // --------------------------
+
+  if (!cart || cart.length === 0) {
+    return {
+      data: [],
+      couponsProduct: [],
+      totalSalesPrice: 0,
+      couponCode: null,
+      couponFor: null,
+      couponAmount: 0,
+      type: null,
+      discountvalue: 0,
+      discountAmount: 0,
+      isDiscountApplicable: false,
+      finalAmount: 0,
+      minusValue: 0,
+      gst: 0,
+      coupons: [],
+      availableCoupons: [],
+    };
+  }
 
   const pricedItems = cart.map((item) => ({
     productId: String(item._id ?? item.product),
@@ -286,34 +306,80 @@ const getCart = async (userId) => {
   const totalPrice = pricedItems.reduce((sum, item) => sum + item.total, 0);
   const productIds = pricedItems.map((item) => item.productId);
 
-  // Product coupons only discount their linked products, while cart-level
-  // coupons (minPurchase, auto and product coupons with an empty product list)
-  // apply to the whole cart. Every active coupon has to be considered, not
-  // only the ones that list a cart product, otherwise cart-level coupons
-  // created in the admin never reach the storefront.
+  const categories = await Category.find({});
+  const categoryIdentifiers = [];
+  pricedItems.forEach((it) => {
+    const ids = getCategoryIdentifiers(it.category, categories);
+    ids.forEach((id) => {
+      if (!categoryIdentifiers.includes(id)) categoryIdentifiers.push(id);
+    });
+  });
+
   const coupons = await Coupon.find({
     isActive: true,
     $or: [
       { products: { $size: 0 } },
       { products: { $in: productIds } },
+      { category: { $in: categoryIdentifiers } },
       { couponFor: { $in: ['minPurchase', 'auto'] } },
     ],
   });
 
-  const best = getBestCouponDiscount(coupons, pricedItems, totalPrice);
-  const eligibleProductIds = best ? best.eligibleProductIds : [];
-  const discount = best ? best.discount : 0;
+  const { best, bestPotential, allCalculations = [] } = getBestCouponDiscount(
+    coupons,
+    pricedItems,
+    totalPrice,
+    categories
+  );
+
+  const isDiscountApplicable = Boolean(best && best.discount > 0);
+  const discount = isDiscountApplicable ? best.discount : 0;
+  const activeScheme = best || bestPotential;
+
+  // Deduplicated list of all coupons applicable to cart items
+  const applicableCouponsMap = new Map();
+  allCalculations.forEach((calc) => {
+    if (calc.coupon && !applicableCouponsMap.has(String(calc.coupon._id))) {
+      applicableCouponsMap.set(String(calc.coupon._id), calc.coupon);
+    }
+  });
+  const cartApplicableCoupons = Array.from(applicableCouponsMap.values());
 
   const data = cart.map((item) => {
-    const isOfferAvailable = eligibleProductIds.includes(String(item._id ?? item.product));
+    const itemId = String(item._id ?? item.product);
+
+    // All calculations & coupons that apply to this specific item
+    const itemCalculations = allCalculations.filter((calc) =>
+      calc.eligibleProductIds && calc.eligibleProductIds.includes(itemId)
+    );
+    const itemCoupons = itemCalculations.map((calc) => calc.coupon);
+    const isOfferAvailable = itemCoupons.length > 0;
+
+    // Pick best calculation for this item if best applies, otherwise candidate
+    const itemBestCalc =
+      itemCalculations.find((calc) => best && String(calc.coupon._id) === String(best.coupon._id)) ||
+      itemCalculations[0];
+
+    const couponCode = itemBestCalc ? itemBestCalc.coupon.code || null : null;
+    const couponDiscount = itemBestCalc
+      ? itemBestCalc.threshold || itemBestCalc.coupon.discount || null
+      : null;
+    const couponOfferDiscount = itemBestCalc
+      ? itemBestCalc.percent
+        ? String(itemBestCalc.percent)
+        : itemBestCalc.coupon.offerDiscount || String(itemBestCalc.coupon.discount) || null
+      : null;
+    const couponType = itemBestCalc ? itemBestCalc.coupon.type || null : null;
 
     return {
       ...item,
       isOfferAvailable,
-      couponCode: isOfferAvailable && best ? best.coupon.code : null,
-      couponDiscount: isOfferAvailable && best ? best.coupon.discount : null,
-      couponOfferDiscount: isOfferAvailable && best ? best.coupon.offerDiscount : null,
-      couponType: isOfferAvailable && best ? best.coupon.type : null,
+      couponCode,
+      couponDiscount,
+      couponOfferDiscount,
+      couponType,
+      coupons: itemCoupons,
+      availableCoupons: itemCoupons,
     };
   });
 
@@ -323,16 +389,21 @@ const getCart = async (userId) => {
     data,
     couponsProduct: data.filter((item) => item.isOfferAvailable),
     totalSalesPrice: totalPrice,
-    couponCode: best ? best.coupon.code : null,
-    couponFor: best ? best.coupon.couponFor : null,
-    couponAmount: best ? best.threshold : 0,
-    type: best ? best.coupon.type : null,
-    discountvalue: best && best.coupon.type === 'percentage' ? best.percent : 0,
+    couponCode: best ? best.coupon.code : (activeScheme ? activeScheme.coupon.code : null),
+    couponFor: best ? best.coupon.couponFor : (activeScheme ? activeScheme.coupon.couponFor : null),
+    couponAmount: best ? best.threshold : (activeScheme ? activeScheme.threshold : 0),
+    type: best ? best.coupon.type : (activeScheme ? activeScheme.coupon.type : null),
+    discountvalue:
+      best && best.coupon.type === 'percentage'
+        ? best.percent
+        : (activeScheme ? activeScheme.percent : 0),
     discountAmount: discount,
-    isDiscountApplicable: discount > 0,
+    isDiscountApplicable,
     finalAmount: totalAmt,
     minusValue: discount,
     gst: 0,
+    coupons: cartApplicableCoupons,
+    availableCoupons: cartApplicableCoupons,
   };
 };
 

@@ -2,6 +2,7 @@ const httpStatus = require('http-status');
 const { Category, Product, Coupon } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { uploadMultipleToR2 } = require('../utils/multipleUpload');
+const { getCategoryIdentifiers, getCouponProductIds, doesCategoryMatch } = require('./coupon.service');
 
 const uploadMultipleFiles = async (req) => {
   if (req.files) {
@@ -189,14 +190,33 @@ const getProductByIdAndSimilerProducts = async (req) => {
   if (!product) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Product not found');
   }
-  const coupon = await Coupon.find({
+
+  const categories = await Category.find({});
+  const categoryIdentifiers = product.category
+    ? getCategoryIdentifiers(product.category, categories)
+    : [];
+
+  const coupons = await Coupon.find({
     isActive: true,
     $or: [
       { products: { $in: [id] } },
       { products: { $size: 0 } },
+      { category: { $in: categoryIdentifiers } },
       { couponFor: { $in: ['minPurchase', 'auto'] } },
     ],
   });
+
+  const matchingCoupons = coupons.filter((c) => {
+    const pIds = getCouponProductIds(c.products || []);
+    if (pIds.length > 0) {
+      return pIds.includes(String(id));
+    }
+    if (c.category && product.category) {
+      return doesCategoryMatch(c.category, product.category, categories);
+    }
+    return true;
+  });
+
   const similarProducts = await Product.find({
     category: product.category,
     _id: { $ne: id },
@@ -204,7 +224,7 @@ const getProductByIdAndSimilerProducts = async (req) => {
   return {
     product,
     similarProducts,
-    coupon: coupon || null,
+    coupon: matchingCoupons || null,
   };
 };
 

@@ -1,5 +1,5 @@
 const httpStatus = require('http-status');
-const { Coupon } = require('../models');
+const { Coupon, Category, Product } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 /**
@@ -180,22 +180,37 @@ const incrementUsageCount = async (code) => {
 
 /**
  * Get active coupons for a specific product
- * @param {ObjectId} productId
+ * @param {ObjectId|string} productId
  * @returns {Promise<Array>}
  */
 const getActiveCouponsForProduct = async (productId) => {
-  return Coupon.find({
+  const product = await Product.findById(productId);
+  const categories = await Category.find({});
+
+  let categoryIdentifiers = [];
+  if (product && product.category) {
+    categoryIdentifiers = getCategoryIdentifiers(product.category, categories);
+  }
+
+  const coupons = await Coupon.find({
     isActive: true,
     $or: [
+      { products: { $in: [productId] } },
+      { products: { $size: 0 } },
+      { category: { $in: categoryIdentifiers } },
       { couponFor: { $in: ['minPurchase', 'auto'] } },
-      {
-        couponFor: 'product',
-        $or: [
-          { products: { $size: 0 } }, // Global product coupons
-          { products: productId },
-        ],
-      },
     ],
+  });
+
+  return coupons.filter((coupon) => {
+    const pIds = getCouponProductIds(coupon.products || []);
+    if (pIds.length > 0) {
+      return pIds.includes(String(productId));
+    }
+    if (coupon.category && product && product.category) {
+      return doesCategoryMatch(coupon.category, product.category, categories);
+    }
+    return true;
   });
 };
 
@@ -207,23 +222,63 @@ const getActiveCouponsForProduct = async (productId) => {
 const getCouponProductIds = (products = []) => products.map((product) => String(product?._id ?? product));
 
 /**
+ * Returns matching identifier strings ([_id, categoryTitle]) for a category value.
+ * @param {string} categoryNameOrId
+ * @param {Array<Object>} categories
+ * @returns {Array<string>}
+ */
+const getCategoryIdentifiers = (categoryNameOrId, categories = []) => {
+  if (!categoryNameOrId) return [];
+  const str = String(categoryNameOrId).trim();
+  const match = categories.find(
+    (c) => c._id === str || (c.categoryTitle && c.categoryTitle.toLowerCase() === str.toLowerCase())
+  );
+  if (match) {
+    return [match._id, match.categoryTitle];
+  }
+  return [str];
+};
+
+/**
+ * Check whether a coupon's category matches an item's category.
+ * @param {string} couponCategory
+ * @param {string} itemCategory
+ * @param {Array<Object>} categories
+ * @returns {boolean}
+ */
+const doesCategoryMatch = (couponCategory, itemCategory, categories = []) => {
+  if (!couponCategory) return true;
+  if (!itemCategory) return false;
+  if (couponCategory === itemCategory) return true;
+
+  const cMatches = getCategoryIdentifiers(couponCategory, categories);
+  const iMatches = getCategoryIdentifiers(itemCategory, categories);
+  return cMatches.some((c) => iMatches.includes(c));
+};
+
+/**
  * Pick the cart lines a coupon can discount.
  * @param {Object} coupon
  * @param {Array<{productId: string, total: number, category?: string}>} items
+ * @param {Array<Object>} [categories]
  * @returns {Array}
  */
-const getEligibleItems = (coupon, items) => {
-  if (coupon.couponFor === 'product') {
-    const productIds = getCouponProductIds(coupon.products || []);
-    if (productIds.length === 0) return items;
-    return items.filter((item) => productIds.includes(String(item.productId)));
+const getEligibleItems = (coupon, items = [], categories = []) => {
+  const couponProductIds = getCouponProductIds(coupon.products || []);
+  const hasProducts = couponProductIds.length > 0;
+  const hasCategory = Boolean(coupon.category && String(coupon.category).trim());
+
+  // 1. If coupon specifies products, match on product ids:
+  if (hasProducts) {
+    return items.filter((item) => couponProductIds.includes(String(item.productId)));
   }
 
-  if (coupon.category) {
-    const categoryItems = items.filter((item) => item.category === coupon.category);
-    if (categoryItems.length > 0) return categoryItems;
+  // 2. If coupon specifies category without products, match on category:
+  if (hasCategory) {
+    return items.filter((item) => doesCategoryMatch(coupon.category, item.category, categories));
   }
 
+  // 3. Otherwise (global coupon), all items in cart are eligible
   return items;
 };
 
@@ -237,12 +292,13 @@ const getEligibleItems = (coupon, items) => {
  * @param {Object} coupon
  * @param {Array<{productId: string, total: number, category?: string}>} items
  * @param {number} cartTotal
+ * @param {Array<Object>} [categories]
  * @returns {Object|null}
  */
-const calculateCouponDiscount = (coupon, items = [], cartTotal = 0) => {
+const calculateCouponDiscount = (coupon, items = [], cartTotal = 0, categories = []) => {
   if (!coupon || coupon.isActive === false) return null;
 
-  const eligibleItems = getEligibleItems(coupon, items);
+  const eligibleItems = getEligibleItems(coupon, items, categories);
   const eligibleTotal = eligibleItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
   if (eligibleTotal <= 0) return null;
 
@@ -251,8 +307,10 @@ const calculateCouponDiscount = (coupon, items = [], cartTotal = 0) => {
   let discount = 0;
   let percent = 0;
   let threshold = eligibleTotal;
+  let meetsThreshold = true;
 
   if (coupon.couponFor === 'product') {
+    threshold = 0;
     if (coupon.type === 'percentage') {
       percent = discountValue;
       discount = (eligibleTotal * percent) / 100;
@@ -261,7 +319,9 @@ const calculateCouponDiscount = (coupon, items = [], cartTotal = 0) => {
     }
   } else if (coupon.couponFor === 'minPurchase') {
     threshold = Number(coupon.minPurchaseAmount ?? coupon.discount ?? 0);
-    if (total < threshold) return null;
+    if (threshold > 0 && total < threshold) {
+      meetsThreshold = false;
+    }
 
     if (coupon.type === 'percentage') {
       percent = discountValue;
@@ -270,40 +330,44 @@ const calculateCouponDiscount = (coupon, items = [], cartTotal = 0) => {
       discount = Math.min(discountValue, eligibleTotal);
     }
   } else {
-    // Auto coupons: discount stores the minimum cart value and
+    // Auto coupons: discount stores the minimum cart value / threshold and
     // offerDiscount stores the percentage, offerAmount an optional flat value.
     threshold = discountValue;
-    if (threshold > 0 && total < threshold) return null;
+    if (threshold > 0 && total < threshold) {
+      meetsThreshold = false;
+    }
 
     const offeredPercent = Number(coupon.offerDiscount);
     const offeredAmount = Number(coupon.offerAmount);
 
     if (coupon.type === 'percentage' || (!coupon.type && offeredPercent > 0)) {
-      if (!(offeredPercent > 0)) return null;
-      percent = offeredPercent;
+      if (offeredPercent > 0) {
+        percent = offeredPercent;
+      } else if (discountValue > 0) {
+        percent = discountValue;
+      }
       discount = (eligibleTotal * percent) / 100;
     } else if (offeredAmount > 0) {
       discount = Math.min(offeredAmount, eligibleTotal);
     } else if (discountValue > 0) {
       discount = Math.min(discountValue, eligibleTotal);
-    } else {
-      return null;
     }
 
-    if (threshold > 0) {
+    if (threshold > 0 && meetsThreshold) {
       discount = Math.min(discount, threshold);
     }
   }
 
   discount = Math.round(Math.min(discount, eligibleTotal, total) * 100) / 100;
-  if (!(discount > 0)) return null;
 
   return {
     coupon,
-    discount,
+    discount: meetsThreshold ? discount : 0,
+    potentialDiscount: discount,
     eligibleTotal,
     threshold,
     percent,
+    meetsThreshold,
     eligibleProductIds: eligibleItems.map((item) => String(item.productId)),
   };
 };
@@ -313,31 +377,53 @@ const calculateCouponDiscount = (coupon, items = [], cartTotal = 0) => {
  * @param {Array<Object>} coupons
  * @param {Array<{productId: string, total: number, category?: string}>} items
  * @param {number} cartTotal
- * @returns {Object|null}
+ * @param {Array<Object>} [categories]
+ * @returns {Object} { best, bestPotential, allCalculations }
  */
-const getBestCouponDiscount = (coupons = [], items = [], cartTotal = 0) => {
+const getBestCouponDiscount = (coupons = [], items = [], cartTotal = 0, categories = []) => {
   let best = null;
+  let bestPotential = null;
+  const allCalculations = [];
 
   coupons.forEach((coupon) => {
-    const result = calculateCouponDiscount(coupon, items, cartTotal);
-    if (result && (!best || result.discount > best.discount)) {
-      best = result;
+    const result = calculateCouponDiscount(coupon, items, cartTotal, categories);
+    if (!result) return;
+    allCalculations.push(result);
+
+    if (result.meetsThreshold && result.discount > 0) {
+      if (!best || result.discount > best.discount) {
+        best = result;
+      }
+    } else {
+      if (
+        !bestPotential ||
+        (result.threshold > 0 && (bestPotential.threshold === 0 || result.threshold < bestPotential.threshold))
+      ) {
+        bestPotential = result;
+      }
     }
   });
 
-  return best;
+  return { best, bestPotential, allCalculations };
 };
 
 const getCouponByProductAndAmount = async (body) => {
   const results = [];
+  const categories = await Category.find({});
 
   for (const item of body) {
     const { category, ids = [], total = 0 } = item;
     if (!Array.isArray(ids) || ids.length === 0) continue;
 
+    const categoryIdentifiers = category ? getCategoryIdentifiers(category, categories) : [];
     const coupons = await Coupon.find({
-      products: { $in: ids },
       isActive: true,
+      $or: [
+        { products: { $in: ids } },
+        { products: { $size: 0 } },
+        { category: { $in: categoryIdentifiers } },
+        { couponFor: { $in: ['minPurchase', 'auto'] } },
+      ],
     });
 
     // The endpoint only receives a grouped total, split it across the lines so
@@ -349,7 +435,7 @@ const getCouponByProductAndAmount = async (body) => {
       category,
     }));
 
-    const best = getBestCouponDiscount(coupons, pricedItems, Number(total));
+    const { best } = getBestCouponDiscount(coupons, pricedItems, Number(total), categories);
     if (!best) continue;
 
     results.push({
@@ -381,6 +467,10 @@ module.exports = {
   incrementUsageCount,
   getActiveCouponsForProduct,
   getCouponByProductAndAmount,
+  getCouponProductIds,
+  getCategoryIdentifiers,
+  doesCategoryMatch,
+  getEligibleItems,
   calculateCouponDiscount,
   getBestCouponDiscount,
 };
