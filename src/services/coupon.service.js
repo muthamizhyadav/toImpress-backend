@@ -1,5 +1,5 @@
 const httpStatus = require('http-status');
-const { Coupon, Category, Product, Spinner } = require('../models');
+const { Coupon, Category, Product } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 /**
@@ -83,67 +83,10 @@ const deleteCouponById = async (couponId) => {
 };
 
 /**
- * Resolve or dynamically create a spin-the-wheel coupon if the code matches
- * a spin campaign pattern or segment value.
- * @param {string} code
- * @returns {Promise<Coupon|null>}
+ * Spin-the-wheel rewards are never turned into Coupon documents. A code that
+ * only exists in a spinner's spin log is not a stored coupon and must not be
+ * created on demand here.
  */
-const resolveSpinnerCoupon = async (code) => {
-  if (!code || typeof code !== 'string') return null;
-  const normalizedCode = code.trim().toUpperCase();
-
-  const spinPattern = /^(?:DIWALI|SPIN)(?:-?(\d+))?(?:-([A-Z0-9]+))?$/i;
-  const match = normalizedCode.match(spinPattern);
-  if (!match) return null;
-
-  const activeSpinners = await Spinner.find({ isActive: true });
-  if (!activeSpinners || !activeSpinners.length) return null;
-
-  const allSegments = [];
-  activeSpinners.forEach((sp) => {
-    (sp.segments || []).forEach((seg, idx) => {
-      allSegments.push({ spinner: sp, segment: seg, index: idx });
-    });
-  });
-
-  const valueFromCode = match[1];
-
-  let matched = null;
-  if (valueFromCode) {
-    matched = allSegments.find((item) => {
-      const segVal = String(item.segment.value || '').replace(/[^0-9]/g, '');
-      return segVal === valueFromCode;
-    });
-  }
-
-  if (!matched && allSegments.length > 0) {
-    matched = allSegments.find((s) => s.segment.rewardType === 'flat_discount') || allSegments[0];
-  }
-
-  if (!matched) return null;
-
-  const { segment } = matched;
-  const discountVal = Number(segment.value) || 0;
-  const discountType = segment.rewardType === 'percent_discount' ? 'percentage' : 'fixed';
-
-  let created = await Coupon.findOne({ code: normalizedCode });
-  if (!created) {
-    created = await Coupon.create({
-      code: normalizedCode,
-      discount: discountVal,
-      type: discountType,
-      couponFor: segment.mapType === 'category' && segment.categoryId ? 'category' : 'all',
-      category: segment.mapType === 'category' && segment.categoryId ? segment.categoryId : undefined,
-      discountName: segment.label || 'Spin & Win Reward',
-      minPurchaseAmount: segment.minOrderAmount || 0,
-      isActive: true,
-      maxUsage: 1000,
-      usageCount: 0,
-    });
-  }
-
-  return created;
-};
 
 /**
  * Validate coupon for application
@@ -153,11 +96,7 @@ const resolveSpinnerCoupon = async (code) => {
  * @returns {Promise<Object>}
  */
 const validateCoupon = async (code, cartTotal = 0, productIds = []) => {
-  let coupon = await getCouponByCode(code);
-
-  if (!coupon) {
-    coupon = await resolveSpinnerCoupon(code);
-  }
+  const coupon = await getCouponByCode(code);
 
   if (!coupon) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Coupon not found');

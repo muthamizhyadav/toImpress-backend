@@ -1,6 +1,6 @@
 const httpStatus = require('http-status');
 const mongoose = require('mongoose');
-const { Spinner, User, Coupon } = require('../models');
+const { Spinner, User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { DEFAULT_SPINNER } = require('../config/spinOffers');
 
@@ -315,26 +315,11 @@ const spinSpinner = async (spinnerId, userId, context = {}) => {
   const userSuffix = ownerId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase() || 'SPIN';
   const couponCode = `DIWALI${cleanVal ? `-${cleanVal}` : ''}-${userSuffix}`;
 
-  try {
-    const existingCoupon = await Coupon.findOne({ code: couponCode });
-    if (!existingCoupon) {
-      await Coupon.create({
-        code: couponCode,
-        discount: Number(storedSegment.value) || 0,
-        type: storedSegment.rewardType === 'percent_discount' ? 'percentage' : 'fixed',
-        couponFor: storedSegment.mapType === 'category' && storedSegment.categoryId ? 'category' : 'all',
-        category: storedSegment.mapType === 'category' && storedSegment.categoryId ? storedSegment.categoryId : undefined,
-        discountName: storedSegment.label || 'Spin & Win Reward',
-        minPurchaseAmount: storedSegment.minOrderAmount || 0,
-        isActive: true,
-        maxUsage: 1,
-        usageCount: 0,
-      });
-    }
-  } catch (err) {
-    // ignore duplicate
-  }
-
+  /*
+   * Spin rewards are tracked only in the spinner's own spin log. No Coupon
+   * document is created here, so deleting a spin coupon cannot be undone by
+   * a later spin.
+   */
   const spinLog = {
     user: ownerId,
     segmentIndex: winningIndex,
@@ -483,25 +468,8 @@ const getUserReward = async (userId) => {
   const userSuffix = ownerId.replace(/[^A-Za-z0-9]/g, '').slice(-4).toUpperCase() || 'SPIN';
   const couponCode = spin.couponCode || `DIWALI${cleanVal ? `-${cleanVal}` : ''}-${userSuffix}`;
 
-  try {
-    const existing = await Coupon.findOne({ code: couponCode });
-    if (!existing) {
-      await Coupon.create({
-        code: couponCode,
-        discount: Number((segment && segment.value) || spin.rewardValue) || 0,
-        type: ((segment && segment.rewardType) || spin.rewardType) === 'percent_discount' ? 'percentage' : 'fixed',
-        couponFor: segment && segment.mapType === 'category' && segment.categoryId ? 'category' : 'all',
-        category: segment && segment.mapType === 'category' && segment.categoryId ? segment.categoryId : undefined,
-        discountName: (segment && segment.label) || spin.segmentLabel || 'Spin & Win Reward',
-        minPurchaseAmount: (segment && segment.minOrderAmount) || 0,
-        isActive: true,
-        maxUsage: 1,
-        usageCount: 0,
-      });
-    }
-  } catch (err) {
-    // ignore
-  }
+  // Spin rewards are not persisted as Coupon documents. They are applied
+  // directly from the spin log by the cart/order flow.
 
   return {
     spinnerId: String(spinner._id),
